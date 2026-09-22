@@ -1,8 +1,23 @@
 {
   "name": "jevlish",
-  "version": "0.1.0",
-  "description": "Write the mechanics in code. Write the judgments in prose. A semantic expression language for TypeScript, compiled to Jev.",
+  "version": "0.1.1",
+  "description": "TypeScript expressions that compile to Jev requests.",
+  "author": "Jacob Goldfarb",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobgoldfarb/Jevlish.git"
+  },
+  "homepage": "https://github.com/jacobgoldfarb/Jevlish#readme",
+  "bugs": {
+    "url": "https://github.com/jacobgoldfarb/Jevlish/issues"
+  },
+  "keywords": [
+    "jev",
+    "typescript",
+    "semantic",
+    "typesafe"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,7 +35,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm test && npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
