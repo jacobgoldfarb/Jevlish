@@ -2,6 +2,7 @@
 import { fileURLToPath } from "node:url";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import starlightLlmActions from "starlight-llm-actions";
 import starlightTypeDoc, { typeDocSidebarGroup } from "starlight-typedoc";
 
 const repo = "https://github.com/jacobgoldfarb/Jevlish";
@@ -42,6 +43,12 @@ export default defineConfig({
             enumMembersFormat: "table",
             typeDeclarationFormat: "table",
           },
+        }),
+        starlightLlmActions({
+          triggerLabel: "Copy for LLM",
+          renderMarkdown: "simple",
+          linkAlternate: true,
+          llmsTxt: true,
         }),
       ],
       sidebar: [

@@ -15,12 +15,21 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@astrojs/mdx": "^8.0.2",
     "@astrojs/starlight": "^0.42.2",
     "astro": "^7.3.3",
+    "hast-util-select": "^6.0.4",
+    "rehype-parse": "^9.0.1",
+    "rehype-remark": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-stringify": "^11.0.0",
     "sharp": "^0.35.4",
+    "starlight-llm-actions": "^0.13.0",
     "starlight-typedoc": "^0.23.1",
     "typedoc": "^0.28.20",
-    "typedoc-plugin-markdown": "^4.13.1"
+    "typedoc-plugin-markdown": "^4.13.1",
+    "unified": "^11.0.5",
+    "unist-util-remove": "^4.0.0"
   },
   "allowScripts": {
     "esbuild@0.28.2": true
