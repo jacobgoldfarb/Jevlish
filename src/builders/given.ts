@@ -1,4 +1,5 @@
 import type { EntryType } from "@typesafe-ai/sdk";
+import { SenseError } from "../errors.js";
 import { type Condition, type ConditionLike, conjoin, disjoin, toCondition, without } from "../expressions/condition.js";
 import type { Scale } from "../expressions/scale.js";
 import { type Candidates, type Selection, chooseFrom as chooseAmong } from "../expressions/selection.js";
@@ -69,8 +70,8 @@ export class Given<T> {
   }
 }
 
-/** `given(x).when(...)` — a predicate that can be refined, run, or branched on. */
-export class Predicate<T> {
+/** `given(x).when(...)` — a predicate that can be refined, awaited, or branched on. */
+export class Predicate<T> implements PromiseLike<Judgment<boolean>> {
   constructor(
     private readonly ctx: SubjectContext<T>,
     readonly condition: Condition<T>,
@@ -92,7 +93,7 @@ export class Predicate<T> {
     return new Predicate(this.ctx, without(this.condition, condition));
   }
 
-  /** Runs when the condition resolves to true. Uncertainty must be handled before `.run()`. */
+  /** Runs when the condition resolves to true. Uncertainty must be handled before the branch can run. */
   do<R>(action: Action<T, R>): Branch<T, R, false> {
     return new Branch(this, action, undefined);
   }
@@ -104,6 +105,14 @@ export class Predicate<T> {
 
   run(): Promise<Judgment<boolean>> {
     return judge(this.ctx, this.condition);
+  }
+
+  /** Awaiting the predicate runs it. */
+  then<R1 = Judgment<boolean>, R2 = never>(
+    onfulfilled?: ((value: Judgment<boolean>) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return this.run().then(onfulfilled, onrejected);
   }
 }
 
@@ -130,9 +139,22 @@ export class Branch<T, R, HasOtherwise extends boolean> {
   ): ReadyBranch<T, HasOtherwise extends true ? R | R3 : R | R3 | undefined> {
     return new ReadyBranch(this.predicate, this.onTrue, this.onFalse, action);
   }
+
+  /**
+   * A branch without `.whenUncertain()` cannot run, so awaiting it rejects.
+   * The fulfilled value is typed `never` so the mistake also shows at compile time.
+   */
+  then<R1 = never, R2 = never>(
+    onfulfilled?: ((value: never) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return Promise.reject<never>(
+      new SenseError(".whenUncertain() is required before a branch can run. Uncertainty never falls through."),
+    ).then(onfulfilled, onrejected);
+  }
 }
 
-export class ReadyBranch<T, R> {
+export class ReadyBranch<T, R> implements PromiseLike<Decision<Awaited<R>>> {
   constructor(
     private readonly predicate: Predicate<T>,
     private readonly onTrue: Action<T, unknown>,
@@ -156,6 +178,14 @@ export class ReadyBranch<T, R> {
     const result = this.onFalse ? await this.onFalse(subject, judgment) : undefined;
     return { branch: "otherwise", result: result as Awaited<R>, judgment };
   }
+
+  /** Awaiting the branch runs it. */
+  then<R1 = Decision<Awaited<R>>, R2 = never>(
+    onfulfilled?: ((value: Decision<Awaited<R>>) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return this.run().then(onfulfilled, onrejected);
+  }
 }
 
 /** `given(x).chooseFrom(candidates)` before the selection criterion is stated. */
@@ -176,7 +206,7 @@ export class ChooseCandidates<T, C> {
   }
 }
 
-export class Choose<T, C, None> {
+export class Choose<T, C, None> implements PromiseLike<Judgment<C | None>> {
   constructor(
     private readonly ctx: SubjectContext<T>,
     private readonly selection: Selection<C, None>,
@@ -193,5 +223,13 @@ export class Choose<T, C, None> {
 
   async run(): Promise<Judgment<C | None>> {
     return askOne(this.ctx, this.selection);
+  }
+
+  /** Awaiting the choice runs it. */
+  then<R1 = Judgment<C | None>, R2 = never>(
+    onfulfilled?: ((value: Judgment<C | None>) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return this.run().then(onfulfilled, onrejected);
   }
 }

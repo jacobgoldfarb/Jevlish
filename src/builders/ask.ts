@@ -119,7 +119,7 @@ export function planOne<T>(ctx: SubjectContext<T>, question: Askable<T>): Plan {
  * in one request. Conditions still fold code first; scales become Scores;
  * selections become Choices. Every answer shares the same evidence.
  */
-export class Ask<T, Q extends Record<string, Askable<T>>> {
+export class Ask<T, Q extends Record<string, Askable<T>>> implements PromiseLike<Asked<T, Q>> {
   constructor(
     private readonly ctx: SubjectContext<T>,
     private readonly questions: Q,
@@ -136,6 +136,14 @@ export class Ask<T, Q extends Record<string, Askable<T>>> {
     const { log, probe, readers } = this.prepare();
     const answers = probe.needsInference ? await this.ctx.runtime.ask(probe.state, probe.questions, log) : {};
     return judgmentsFrom(readers, answers, log) as Asked<T, Q>;
+  }
+
+  /** Awaiting the questions runs them. */
+  then<R1 = Asked<T, Q>, R2 = never>(
+    onfulfilled?: ((value: Asked<T, Q>) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return this.run().then(onfulfilled, onrejected);
   }
 
   private prepare(): { log: EvidenceLog; probe: Probe<T>; readers: Array<[string, Reader]> } {

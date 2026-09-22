@@ -93,7 +93,7 @@ interface Partitioned<T> {
 }
 
 /** `from(items).where(...)` — filter, rank, and limit. The model judges; the runtime sorts. */
-export class Query<T, Ranked extends boolean = false> {
+export class Query<T, Ranked extends boolean = false> implements PromiseLike<RunResult<T, Ranked>> {
   constructor(
     private readonly runtime: Runtime,
     private readonly items: readonly T[],
@@ -141,6 +141,14 @@ export class Query<T, Ranked extends boolean = false> {
     const prepared = this.items.map((item) => this.prepare(item, log));
     const verdicts = await Promise.all(prepared.map((entry) => this.judgeItem(entry, log)));
     return this.toResult(orderByScale(partition(verdicts), this.state.ranking), log);
+  }
+
+  /** Awaiting the query runs it. */
+  then<R1 = RunResult<T, Ranked>, R2 = never>(
+    onfulfilled?: ((value: RunResult<T, Ranked>) => R1 | PromiseLike<R1>) | null,
+    onrejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
+  ): Promise<R1 | R2> {
+    return this.run().then(onfulfilled, onrejected);
   }
 
   private async judgeItem(entry: ItemProbe<T>, log: EvidenceLog): Promise<ItemVerdict<T>> {

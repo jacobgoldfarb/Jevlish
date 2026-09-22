@@ -19,8 +19,7 @@ for (const ticket of tickets) {
     .when(needsAttention)
     .do(() => "escalate")
     .otherwise(() => "leave")
-    .whenUncertain(() => "review")
-    .run();
+    .whenUncertain(() => "review");
   const probs = decision.judgment.evidence.judgments
     .filter((j) => j.kind === "noul")
     .map((j) => `${j.label}=${j.probability.toFixed(2)}`)
@@ -40,8 +39,7 @@ const ranked = await sense
   .where((t) => t.status === "open")
   .and(reportsProblem)
   .rankedBy(disruption, "highest first")
-  .take(10)
-  .run();
+  .take(10);
 console.log("items:    ", ranked.scored.map((s) => `${s.item.id}(${s.score.toFixed(2)})`).join(", "));
 console.log("uncertain:", ranked.uncertain.map((t) => t.id).join(", ") || "-");
 console.log("rejected: ", ranked.rejected.map((t) => t.id).join(", ") || "-");
@@ -55,8 +53,7 @@ for (const ticket of [tickets[0]!, tickets[4]!, tickets[3]!]) {
     .chooseFrom(engineers)
     .seenAs((e) => ({ expertise: e.expertise, recentWork: e.recentWork }))
     .by("whose experience best matches the problem described in ticket")
-    .orNone("none of the engineers has relevant experience for this ticket")
-    .run();
+    .orNone("none of the engineers has relevant experience for this ticket");
   const record = owner.evidence.judgments.find((j) => j.kind === "choice");
   console.log(
     `${ticket.id} -> ${owner.status === "decided" ? (owner.value?.name ?? "none") : "uncertain"} ` +

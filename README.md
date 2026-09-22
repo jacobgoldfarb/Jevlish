@@ -16,11 +16,10 @@ const decision = await given(ticket)
   .and((t) => t.status === "open")
   .do(escalate)
   .otherwise(leave)
-  .whenUncertain(review)
-  .run();
+  .whenUncertain(review);
 ```
 
-`decision.branch` is `"do"`, `"otherwise"`, or `"uncertain"`. Abstention runs the `whenUncertain` handler; `.whenUncertain()` is required before `.run()`. A false predicate under `and` drops the other side, so a closed ticket sends no request.
+`decision.branch` is `"do"`, `"otherwise"`, or `"uncertain"`. Abstention runs the `whenUncertain` handler; a branch without `.whenUncertain()` rejects when awaited. A false predicate under `and` drops the other side, so a closed ticket sends no request.
 
 ```ts
 import { from, scale } from "jevlish";
@@ -33,8 +32,7 @@ const queue = await from(tickets)
   .where((t) => t.status === "open")
   .and("the message reports a failure in the product")
   .rankedBy(disruption, "highest first")
-  .take(10)
-  .run();
+  .take(10);
 ```
 
 `accepted` passed both checks, highest score first. `rejected` resolved false. `uncertain` missed your threshold on the Noul or the score. The sort and `take` run locally.
@@ -54,7 +52,9 @@ export TYPESAFE_API_KEY=...
 
 Node 20+. ESM.
 
-`given(subject)` judges one value. `from(items)` filters a list. `.seenAs(fn)` is the state the model sees; predicates, actions, and the chosen candidate are still the whole object. `.plan()` returns the requests that would be sent, including how many subjects code already settled.
+`given(subject)` judges one value. `from(items)` filters a list. `.seenAs(fn)` is the state the model sees; predicates, actions, and the chosen candidate are still the whole object.
+
+An expression is a value until you `await` it; awaiting runs it, and each `await` runs it again. `.run()` does the same thing explicitly. `.plan()` returns the requests that would be sent, including how many subjects code already settled, without sending anything. Build expressions in plain functions, not `async` ones, if callers need to `.plan()` them: an `async` return awaits the expression for you.
 
 ```ts
 import { configure } from "jevlish";
@@ -69,7 +69,7 @@ That configures the shared runtime behind `given`, `from`, and `grade`. `createS
 
 `means(proposition).including(inside).excluding(outside)` sets Noul criteria, and only on a single proposition — compose after the boundary is drawn. `grade(meaning, fixtures)` reports accuracy on decided fixtures, coverage, and abstentions separately from wrong answers.
 
-`given(x).ask({ ... })` batches independent questions. A predicate in that object adds nothing to the request. `given(x).chooseFrom(candidates).by("...").orNone("...")` resolves the Choice back to your object; `decided(null)` is the none option.
+`given(x).ask({ ... })` batches independent questions. A predicate in that object adds nothing to the request. `await given(x).chooseFrom(candidates).by("...").orNone("...")` resolves the Choice back to your object; `decided(null)` is the none option.
 
 Defaults are Noul yes at P(yes) ≥ 0.9 and no at ≤ 0.1, Choice and Score at confidence ≥ 0.5. A thrown error is a failed request.
 
