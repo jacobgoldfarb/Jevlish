@@ -33,6 +33,8 @@ Every runnable expression has `.plan()`: predicates, branches, queries, measurem
 
 An `async` function awaits its return value. A function that returns `given(t).when(blocked)` hands the caller an expression they can `.plan()`, `.run()`, or `.withPolicy()` further. An `async` function that returns the same thing hands them a `Promise<Judgment<boolean>>` that is already in flight. If callers need to inspect before spending, build expressions in plain functions and let the caller decide when to `await`.
 
+Most application code should let TypeScript infer expression types. Libraries that need to name a builder type can import the advanced classes from `jevlish/types`; they are kept out of the root entry point so the common API stays focused on verbs, question builders, and results.
+
 ## Errors
 
 A `SenseError` means the expression itself is malformed or incomplete: an empty proposition, `.and()` before `.where()`, a branch awaited without `.whenUncertain()`, a scale with one level. Transport failures from the underlying SDK propagate as they are. A thrown error is a failed request, never evidence about the proposition; it does not become `uncertain`.

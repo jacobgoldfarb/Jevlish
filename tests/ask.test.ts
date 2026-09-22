@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseFrom, createSense, means, scale } from "../src/index.js";
+import { Choice, chooseFrom, createSense, means, scale } from "../src/index.js";
 import { fake, pick as choose, rate, textOf, yes } from "./fake.js";
 
 interface Feedback {
@@ -22,6 +22,10 @@ const severity = scale<Feedback>("how much the issue blocks the user")
 const feedback: Feedback = { text: "Exports have been failing all week. We're moving to a competitor.", plan: "pro" };
 
 describe("given().ask()", () => {
+  it("names a compiled chooseFrom value as a Choice", () => {
+    expect(chooseFrom(area).by("which area applies")).toBeInstanceOf(Choice);
+  });
+
   it("asks several independent things in one request and types each answer", async () => {
     const client = fake((question) => {
       if (question.type === "choice") return choose("option_1", 0.95, { option_1: 0.97, option_2: 0.03 });
@@ -53,7 +57,7 @@ describe("given().ask()", () => {
     expect(answers.severity).toMatchObject({ status: "decided", value: { score: 2, level: 2 } });
     expect(answers.area).toMatchObject({ status: "decided", value: area[0] });
 
-    // Type-level: the selection answer is Judgment<Area | null>, the scale answer Judgment<Measurement>.
+    // Type-level: the Choice answer is Judgment<Area | null>, the scale answer Judgment<Measurement>.
     if (answers.area.status === "decided") {
       const name: string | undefined = answers.area.value?.name;
       void name;
@@ -83,6 +87,16 @@ describe("given().ask()", () => {
     const answers = await createSense({ client }).given(feedback).ask({ problem, severity }).run();
     expect(answers.problem.status).toBe("uncertain");
     expect(answers.severity.status).toBe("uncertain");
+  });
+
+  it("accepts policy overrides after ask is built", async () => {
+    const client = fake(() => yes(0.7));
+    const answers = await createSense({ client })
+      .given(feedback)
+      .ask({ problem })
+      .withPolicy({ noul: { yesAbove: 0.6 } })
+      .run();
+    expect(answers.problem).toMatchObject({ status: "decided", value: true });
   });
 
   it("refuses an empty question set", () => {

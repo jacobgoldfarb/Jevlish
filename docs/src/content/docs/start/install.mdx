@@ -15,13 +15,15 @@ Node 20+. ESM only. The package ships its own type declarations.
 
 ## The API key
 
-`given`, `from`, and `grade` share one runtime. On first use it reads `TYPESAFE_API_KEY` and creates a Jev client. Nothing is sent until an expression runs, so importing the package and building expressions costs nothing.
+`given`, `from`, and `grade` share one Sense: the three verbs bound to one runtime. On first use, that runtime reads `TYPESAFE_API_KEY` and creates a Jev client. Nothing is sent until an expression runs, so importing the package and building expressions costs nothing.
+
+Jevlish uses the TypeSafe/Jev SDK. The environment variable is therefore named `TYPESAFE_API_KEY`, and the default transport is `TypeSafeClient`.
 
 If the key is missing when the first request goes out, the expression rejects with a `SenseError` that says so.
 
 ## Defaults for the shared runtime
 
-`configure` replaces the shared runtime. Call it once, before the first expression runs.
+The module-level verbs create their shared Sense lazily. Call `configure` before their first use only when you need to replace its defaults.
 
 <Code lang="ts" code={configure} />
 

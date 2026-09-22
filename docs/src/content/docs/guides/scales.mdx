@@ -28,7 +28,7 @@ A decided measurement carries:
 - `score`: the expected position on the scale, a real number from 0 to `top`.
 - `normalized`: `score / top`, from 0 to 1.
 - `level` and `levelDescription`: the most likely level and its text.
-- `confidence` and `probabilities`: what the policy compared against `score.minConfidence`, and the distribution behind it.
+- `confidence` and `probabilities`: what the policy compared against `policy.score.minConfidence`, and the distribution behind it.
 
 The judgment is `uncertain` when confidence misses the threshold.
 
@@ -38,4 +38,4 @@ The judgment is `uncertain` when confidence misses the threshold.
 
 ## Inside `ask`
 
-A scale can be one of the questions in `given(x).ask({ ... })`, alongside conditions and selections; it produces a `Judgment<Measurement>` under its key. See [Asking several questions](/Jevlish/guides/ask/).
+A scale can be one of the questions in `given(x).ask({ ... })`, alongside conditions and Choices; it produces a `Judgment<Measurement>` under its key. See [Asking several questions](/Jevlish/guides/ask/).

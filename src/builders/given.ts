@@ -2,7 +2,7 @@ import type { EntryType } from "@typesafe-ai/sdk";
 import { SenseError } from "../errors.js";
 import { type Condition, type ConditionLike, conjoin, disjoin, toCondition, without } from "../expressions/condition.js";
 import type { Scale } from "../expressions/scale.js";
-import { type Candidates, type Selection, chooseFrom as chooseAmong } from "../expressions/selection.js";
+import { type Choice, type ChoiceBuilder, chooseFrom as chooseAmong } from "../expressions/selection.js";
 import type { Judgment } from "../judgment.js";
 import { type PartialPolicy, resolvePolicy } from "../policy.js";
 import { type Plan, planFor } from "../runtime/plan.js";
@@ -22,6 +22,10 @@ export interface Decision<R> {
   readonly branch: BranchTaken;
   readonly result: R;
   readonly judgment: Judgment<boolean>;
+}
+
+function contextWithPolicy<T>(ctx: SubjectContext<T>, policy: PartialPolicy): SubjectContext<T> {
+  return { ...ctx, policy: resolvePolicy(ctx.policy, policy) };
 }
 
 /** Entry point: `given(subject)`. */
@@ -49,8 +53,8 @@ export class Given<T> {
   }
 
   /** Select one of your own objects, by prose. */
-  chooseFrom<C>(candidates: readonly C[]): ChooseCandidates<T, C> {
-    return new ChooseCandidates(this.context(), chooseAmong(candidates));
+  chooseFrom<C>(candidates: readonly C[]): SubjectChoiceBuilder<T, C> {
+    return new SubjectChoiceBuilder(this.context(), chooseAmong(candidates));
   }
 
   /** Place the subject on a scale. */
@@ -83,6 +87,11 @@ export class Predicate<T> implements PromiseLike<Judgment<boolean>> {
   /** The whole subject, as passed to `given()`. */
   get subject(): T {
     return this.ctx.subject;
+  }
+
+  /** Override acceptance thresholds for this expression. */
+  withPolicy(policy: PartialPolicy): Predicate<T> {
+    return new Predicate(contextWithPolicy(this.ctx, policy), this.condition);
   }
 
   /** Both must hold. A false code predicate settles the conjunction without a request. */
@@ -142,6 +151,11 @@ export class Branch<T, R, HasOtherwise extends boolean> {
     return new Branch(this.predicate, this.onTrue, action);
   }
 
+  /** Override acceptance thresholds for this branch. */
+  withPolicy(policy: PartialPolicy): Branch<T, R, HasOtherwise> {
+    return new Branch(this.predicate.withPolicy(policy), this.onTrue, this.onFalse);
+  }
+
   /** Runs when the condition is unresolved. Required: uncertainty never falls through. */
   whenUncertain<R3>(
     action: Action<T, R3>,
@@ -172,6 +186,11 @@ export class ReadyBranch<T, R> implements PromiseLike<Decision<Awaited<R>>> {
     private readonly onUncertain: Action<T, unknown>,
   ) {}
 
+  /** Override acceptance thresholds for this branch. */
+  withPolicy(policy: PartialPolicy): ReadyBranch<T, R> {
+    return new ReadyBranch(this.predicate.withPolicy(policy), this.onTrue, this.onFalse, this.onUncertain);
+  }
+
   /** What would be sent, without sending it. Handlers do not run. */
   plan(): Plan {
     return this.predicate.plan();
@@ -200,34 +219,44 @@ export class ReadyBranch<T, R> implements PromiseLike<Decision<Awaited<R>>> {
   }
 }
 
-/** `given(x).chooseFrom(candidates)` before the selection criterion is stated. */
-export class ChooseCandidates<T, C> {
+/** `given(x).chooseFrom(candidates)` before the Choice criterion is stated. */
+export class SubjectChoiceBuilder<T, C> {
   constructor(
     private readonly ctx: SubjectContext<T>,
-    private readonly candidates: Candidates<C>,
+    private readonly candidates: ChoiceBuilder<C>,
   ) {}
 
-  /** What the model sees of each candidate. The chosen candidate comes back whole. */
-  seenAs(projection: Projection<C>): ChooseCandidates<T, C> {
-    return new ChooseCandidates(this.ctx, this.candidates.seenAs(projection));
+  /** Override acceptance thresholds for this choice. */
+  withPolicy(policy: PartialPolicy): SubjectChoiceBuilder<T, C> {
+    return new SubjectChoiceBuilder(contextWithPolicy(this.ctx, policy), this.candidates);
   }
 
-  /** The selection criterion, in prose. */
-  by(criterion: string): Choose<T, C, never> {
-    return new Choose(this.ctx, this.candidates.by(criterion));
+  /** What the model sees of each candidate. The chosen candidate comes back whole. */
+  seenAs(projection: Projection<C>): SubjectChoiceBuilder<T, C> {
+    return new SubjectChoiceBuilder(this.ctx, this.candidates.seenAs(projection));
+  }
+
+  /** The Choice criterion, in prose. */
+  by(criterion: string): SubjectChoice<T, C, never> {
+    return new SubjectChoice(this.ctx, this.candidates.by(criterion));
   }
 }
 
-/** `given(x).chooseFrom(candidates).by(...)` — a selection ready to run. Resolves to one of your own objects. */
-export class Choose<T, C, None> implements PromiseLike<Judgment<C | None>> {
+/** `given(x).chooseFrom(candidates).by(...)` — a Choice ready to run. Resolves to one of your own objects. */
+export class SubjectChoice<T, C, None> implements PromiseLike<Judgment<C | None>> {
   constructor(
     private readonly ctx: SubjectContext<T>,
-    private readonly selection: Selection<C, None>,
+    private readonly selection: Choice<C, None>,
   ) {}
 
+  /** Override acceptance thresholds for this choice. */
+  withPolicy(policy: PartialPolicy): SubjectChoice<T, C, None> {
+    return new SubjectChoice(contextWithPolicy(this.ctx, policy), this.selection);
+  }
+
   /** Make "none of them" a legitimate, distinct outcome. Separate from uncertainty. */
-  orNone(description: EntryType): Choose<T, C, null> {
-    return new Choose(this.ctx, this.selection.orNone(description));
+  orNone(description: EntryType): SubjectChoice<T, C, null> {
+    return new SubjectChoice(this.ctx, this.selection.orNone(description));
   }
 
   /** What would be sent, without sending it. */

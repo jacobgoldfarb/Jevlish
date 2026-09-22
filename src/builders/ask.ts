@@ -2,9 +2,9 @@ import type { EntryType } from "@typesafe-ai/sdk";
 import { SenseError } from "../errors.js";
 import { type Condition, type ConditionLike, Meaning, toCondition } from "../expressions/condition.js";
 import { Scale } from "../expressions/scale.js";
-import { Selection, resolveSelection, toChoiceCriteria } from "../expressions/selection.js";
+import { Choice, resolveSelection, toChoiceCriteria } from "../expressions/selection.js";
 import { type Answer, type Evidence, type Judgment, EvidenceLog, decided, uncertain } from "../judgment.js";
-import type { AcceptancePolicy } from "../policy.js";
+import { type AcceptancePolicy, type PartialPolicy, resolvePolicy } from "../policy.js";
 import { type Plan, planFor } from "../runtime/plan.js";
 import { Probe, type ScoreReading } from "../runtime/probe.js";
 import type { SubjectContext } from "./subject.js";
@@ -19,15 +19,15 @@ export interface Measurement {
   readonly probabilities: Readonly<Record<string, number>>;
 }
 
-/** Anything you can ask about a subject: a condition, a scale, or a selection. */
-// biome-ignore lint/suspicious/noExplicitAny: Selection is contravariant in its candidate type; `any` accepts every instantiation.
-export type Askable<T> = ConditionLike<T> | Scale<T> | Selection<any, any>;
+/** Anything you can ask about a subject: a condition, a scale, or a Choice. */
+// biome-ignore lint/suspicious/noExplicitAny: Choice is contravariant in its candidate type; `any` accepts every instantiation.
+export type Askable<T> = ConditionLike<T> | Scale<T> | Choice<any, any>;
 
 /** The typed answers of `ask()`: each key gets the Judgment its question produces. */
 export type Asked<T, Q extends Record<string, Askable<T>>> = {
   readonly [K in keyof Q]: Q[K] extends Scale<infer _S>
     ? Judgment<Measurement>
-    : Q[K] extends Selection<infer C, infer None>
+    : Q[K] extends Choice<infer C, infer None>
       ? Judgment<C | None>
       : Judgment<boolean>;
 };
@@ -60,9 +60,9 @@ function isConditionLike<T>(question: unknown): question is ConditionLike<T> {
 
 function compileAskable<T>(probe: Probe<T>, question: Askable<T>, policy: AcceptancePolicy): Reader {
   if (question instanceof Scale) return compileScale(probe, question, policy);
-  if (question instanceof Selection) return compileChoice(probe, question, policy);
+  if (question instanceof Choice) return compileChoice(probe, question, policy);
   if (isConditionLike<T>(question)) return compileCondition(probe, toCondition(question), policy);
-  throw new SenseError("ask() takes a condition, a scale, or chooseFrom(...).by(...).");
+  throw new SenseError("ask() takes a condition, a scale, or a Choice from chooseFrom(...).by(...).");
 }
 
 function measurementOf(reading: ScoreReading): Measurement {
@@ -84,7 +84,7 @@ function compileScale<T>(probe: Probe<T>, scale: Scale<T>, policy: AcceptancePol
   };
 }
 
-function compileChoice<T>(probe: Probe<T>, selection: Selection<unknown, unknown>, policy: AcceptancePolicy): Reader {
+function compileChoice<T>(probe: Probe<T>, selection: Choice<unknown, unknown>, policy: AcceptancePolicy): Reader {
   const { criteria, byOption } = toChoiceCriteria(selection);
   const id = probe.addChoice(selection.criterion, criteria);
   return (answers) => {
@@ -117,7 +117,7 @@ export function planOne<T>(ctx: SubjectContext<T>, question: Askable<T>): Plan {
 /**
  * `given(x).ask({ ... })` — several independent judgments about one subject,
  * in one request. Conditions still fold code first; scales become Scores;
- * selections become Choices. Every answer shares the same evidence.
+ * Choice values remain Choices. Every answer shares the same evidence.
  */
 export class Ask<T, Q extends Record<string, Askable<T>>> implements PromiseLike<Asked<T, Q>> {
   constructor(
@@ -125,6 +125,11 @@ export class Ask<T, Q extends Record<string, Askable<T>>> implements PromiseLike
     private readonly questions: Q,
   ) {
     if (Object.keys(questions).length === 0) throw new SenseError("ask() needs at least one question.");
+  }
+
+  /** Override acceptance thresholds for these questions. */
+  withPolicy(policy: PartialPolicy): Ask<T, Q> {
+    return new Ask({ ...this.ctx, policy: resolvePolicy(this.ctx.policy, policy) }, this.questions);
   }
 
   /** What would be sent, without sending it. */

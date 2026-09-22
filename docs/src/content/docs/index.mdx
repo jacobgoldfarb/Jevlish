@@ -1,43 +1,49 @@
 ---
-title: jevlish
-description: TypeScript expressions that compile to Jev requests.
-template: splash
-hero:
-  tagline: Write the mechanics in code. Write the judgments in prose.
-  actions:
-    - text: Quickstart
-      link: /Jevlish/start/quickstart/
-      icon: right-arrow
-    - text: GitHub
-      link: https://github.com/jacobgoldfarb/Jevlish
-      icon: external
-      variant: minimal
+title: Introduction
+description: What jevlish is, and what it is for.
 ---
 
-import { Card, CardGrid, Code } from "@astrojs/starlight/components";
+import { Code } from "@astrojs/starlight/components";
 import decision from "@snippets/hero-decision.ts?raw";
-import queue from "@snippets/hero-queue.ts?raw";
 
-<CardGrid>
-  <Card title="Judge one thing" icon="approve-check">
-    <Code lang="ts" code={decision} />
-  </Card>
-  <Card title="Filter and rank a list" icon="list-format">
-    <Code lang="ts" code={queue} />
-  </Card>
-</CardGrid>
+jevlish brings [Jev](https://docs.typesafe.ai) judgments into ordinary TypeScript business logic. Use `given` to judge one value and `from` to filter or rank a collection.
 
-<CardGrid>
-  <Card title="Conditions, not prompts" icon="pencil">
-    A string in a condition is a Noul. A function is a predicate and runs locally, before anything is sent. `and`, `or`, and `unless` stay separate nodes and combine with three-valued logic.
-  </Card>
-  <Card title="Uncertainty never falls through" icon="warning">
-    Every result is `decided` or `uncertain`. A branch cannot run until you say what happens when the model abstains.
-  </Card>
-  <Card title="Inspect before you spend" icon="magnifier">
-    `.plan()` returns the requests that would be sent, including how many subjects code already settled, without sending anything.
-  </Card>
-  <Card title="Test the vocabulary" icon="approve-check-circle">
-    `grade(meaning, fixtures)` reports accuracy, coverage, and abstentions separately from wrong answers.
-  </Card>
-</CardGrid>
+## What it solves
+
+The Jev SDK is shaped like an LLM SDK: build a request, send it, and read the response. That is useful when the response goes to a person. In application logic, the response usually decides what code does with a value it already has—whether a ticket escalates, which rows a query keeps, or who gets assigned.
+
+jevlish expresses those operations as conditions, filters, rankings, and choices. Exact checks remain TypeScript functions. Semantic checks remain plain-language Jev questions.
+
+## How it works
+
+1. `given`, `from`, and the question builders create a lazy expression. Building it sends nothing.
+2. `.plan()` shows the state and questions that would leave the process.
+3. `await` or `.run()` folds code predicates, compiles the remaining Noul, Score, and Choice questions, and asks Jev.
+4. The acceptance policy turns model probabilities and confidences into `decided` or `uncertain` judgments.
+5. The result retains the requests, answers, local predicate outcomes, usage, cache status, and policy as evidence.
+
+## One decision
+
+<Code lang="ts" code={decision} title="judge one thing" />
+
+`means(...)` defines a reusable Noul question with an explicit boundary. `given(ticket)` supplies the subject. `.seenAs(...)` controls what leaves the process; predicates and handlers still receive the complete `Ticket`.
+
+The branch has three outcomes. `do` handles true, `otherwise` handles false, and `whenUncertain` handles an answer that did not meet the policy. A false code predicate under `and` settles the condition locally, so a closed ticket sends no request.
+
+## Jev vocabulary
+
+- A string condition or `means(...)` compiles to a Jev **Noul** question.
+- A `scale` compiles to a **Score** question.
+- `chooseFrom` compiles to a **Choice** question and maps the answer back to one of your objects.
+- `ask` sends related Noul, Score, and Choice questions about one subject together.
+- A **Sense** is a configured set of `given`, `from`, and `grade` verbs bound to one runtime.
+
+Jevlish uses the TypeSafe/Jev SDK. That is why the environment variable is `TYPESAFE_API_KEY` and the default transport is `TypeSafeClient`.
+
+## Where to go next
+
+- [Install and configure](/Jevlish/start/install/) gets a key into the process and explains the shared Sense.
+- [Quickstart](/Jevlish/start/quickstart/) builds one decision and one ranked query line by line.
+- [Support desk](/Jevlish/examples/support-desk/) runs the same domain as a complete pipeline.
+- The guides cover each verb in turn, starting with [Judging one thing](/Jevlish/guides/given/).
+- The [Reference](/Jevlish/reference/) is generated from the source and lists every export.

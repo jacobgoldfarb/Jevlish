@@ -18,6 +18,8 @@ export const saysResolved = means<Ticket>("the customer says the problem has bee
 export const threatensToLeave = means<Ticket>("the customer threatens to cancel or move to a competitor")
   .named("threatensToLeave");
 
+export const isOpen = (ticket: Ticket) => ticket.status === "open";
+
 /**
  * The escalation policy, as a sentence:
  * blocked (unless they say it's resolved), or threatening to leave — and the ticket is open.
@@ -28,7 +30,7 @@ export const threatensToLeave = means<Ticket>("the customer threatens to cancel 
 export const needsAttention = blocked
   .unless(saysResolved)
   .or(threatensToLeave)
-  .and((ticket) => ticket.status === "open");
+  .and(isOpen);
 
 export const reportsProblem = means<Ticket>("the message reports a problem with the product")
   .including("something in the product is broken, failing, or behaving wrongly")

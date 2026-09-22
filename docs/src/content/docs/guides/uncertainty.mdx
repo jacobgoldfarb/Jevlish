@@ -33,7 +33,7 @@ These are application thresholds, not universal truths. Tune them against your o
 
 ## Setting them
 
-For the shared runtime, pass `policy` to `configure`. For one expression, `.withPolicy({...})` on `given` or `from` layers an override on the runtime's policy. Either takes any subset of the fields.
+For the shared runtime, pass `policy` to `configure`. For one expression, call `.withPolicy({...})` on `given`, `from`, or any predicate, branch, query, measurement, choice, or `ask` expression they build. Either form accepts any subset of the fields.
 
 <Code lang="ts" code={policy} />
 
@@ -45,7 +45,7 @@ Because `false and x` is `false` no matter what `x` is, a false code predicate u
 
 <Code lang="ts" code={shortCircuit} />
 
-The same applies per item in `from(...)`: closed tickets never reach the model when `.where((t) => t.status === "open")` is in the chain.
+The symmetric rule applies to `or`: a true code predicate settles `true or x` without asking `x`. The same folding happens per item in `from(...)`, so closed tickets never reach the model when `.where((t) => t.status === "open")` is in the chain.
 
 ## Thresholds apply after the cache
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { logic, truthOfProbability } from "../src/index.js";
+import { logic } from "../src/index.js";
+import { truthOfProbability } from "../src/runtime.js";
 
 describe("three-valued logic", () => {
   it("follows Kleene semantics", () => {

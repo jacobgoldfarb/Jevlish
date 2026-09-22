@@ -12,5 +12,5 @@ if (measurement.status === "decided") {
   normalized; // score / top
   level; // the most likely level's index
   levelDescription; // that level's text
-  confidence; // what the policy compared against score.minConfidence
+  confidence; // what the policy compared against policy.score.minConfidence
 }

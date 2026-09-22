@@ -15,6 +15,10 @@ The samples on this site share a small support-desk domain: a `Ticket`, a few `E
 <Code lang="ts" code={support} title="support.ts" />
 </details>
 
+:::note[Before you run]
+Install the package and set `TYPESAFE_API_KEY` as shown in [Install and configure](/Jevlish/start/install/). Calling `.plan()` needs no key and sends nothing; `await` and `.run()` execute requests.
+:::
+
 ## Judge one thing
 
 <Code lang="ts" code={decision} title="hero-decision.ts" />
@@ -34,9 +38,13 @@ Line by line:
 
 - `scale<Ticket>("...").from(low).to(high)` defines a **scale**: ordered situations, two to ten of them. The model returns a position along them, not a yes or no.
 - `from(tickets)` names the collection. `.where(...)` and `.and(...)` filter it with the same three kinds of condition `given` accepts: a code predicate, a string, or a meaning.
-- `.rankedBy(disruption, "highest first")` scores each accepted ticket once and sorts. `.take(10)` limits. Both run locally.
+- `.rankedBy(disruption, "highest first")` sends the filter and Score question together for each ticket not rejected by code, then sorts accepted tickets locally. `.take(10)` limits the returned list; it does not reduce how many tickets are judged.
 - The result has three buckets. Every ticket lands in exactly one. `uncertain` is not a soft reject: it is the tickets the policy would not decide, kept where you can see them.
 
 ## Before you spend
 
 Replace `await` with `.plan()` on either expression and nothing is sent. The plan lists the requests that would go out, the state the model would see, and how many subjects code alone settled. See [Running and planning](/Jevlish/guides/running/).
+
+## Put it together
+
+The [Support desk example](/Jevlish/examples/support-desk/) uses this same domain in a complete pipeline, with commands to plan, run, trace, and grade it.

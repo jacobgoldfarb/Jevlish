@@ -25,7 +25,7 @@ The result has three buckets, and every item lands in exactly one:
 
 ## Ranking
 
-`.rankedBy(scale, order)` scores each accepted item on a [scale](/Jevlish/guides/scales/) and sorts `accepted` by that score. `order` is `"highest first"` (the default) or `"lowest first"`. The score is asked in the same request as the filter, so ranking adds a question, not a round trip.
+`.rankedBy(scale, order)` adds a [Score](/Jevlish/guides/scales/) question for every item not rejected by code, in the same request as its semantic filter. After the filter resolves, scores are read only for accepted items and `accepted` is sorted by them. This avoids a second round trip, but an item the model later rejects or leaves uncertain was still scored. `order` is `"highest first"` (the default) or `"lowest first"`.
 
 <Code lang="ts" code={ranked} />
 
@@ -35,11 +35,11 @@ A ranked result adds `scored`: each accepted item with its `score` (0 to `scale.
 
 ## Limiting
 
-`.take(n)` keeps the first `n` of `accepted` after ranking. It does not reduce what is asked: every item is still judged, because the ranking needs every score. To spend less, narrow the list in code first, or put a code predicate in `.where()` so the closed rows never leave the process.
+`.take(n)` keeps the first `n` of `accepted` after ranking. It does not reduce what is asked. To spend less, narrow the list in code first, or put a code predicate in `.where()` so rejected rows never leave the process.
 
 ## Projection and policy
 
-`.seenAs(fn)` on `from` projects each item, the same as on `given`. `.withPolicy({...})` overrides the thresholds for this query. Both go before `.where()`.
+`.seenAs(fn)` on `from` projects each item, the same as on `given`, and goes before `.where()`. `.withPolicy({...})` overrides thresholds either before or after the query is built.
 
 ## Inspecting before running
 

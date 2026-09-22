@@ -4,7 +4,7 @@ import { type AcceptancePolicy, type PartialPolicy, resolvePolicy } from "./poli
 import type { Runtime } from "./runtime/runtime.js";
 import { type Projection, contextFor, judge } from "./builders/subject.js";
 
-/** A labelled example. `expected` is what a careful person would answer. */
+/** A labeled example. `expected` is what a careful person would answer. */
 export interface Fixture<T> {
   readonly subject: T;
   readonly expected: boolean;
@@ -44,7 +44,7 @@ interface JudgedFixture<T> {
 }
 
 /**
- * Grade a meaning against labelled fixtures the way you would test a
+ * Grade a meaning against labeled fixtures the way you would test a
  * function. Reports false positives, false negatives, and abstentions
  * separately: an abstention is a policy outcome, not a wrong answer.
  */

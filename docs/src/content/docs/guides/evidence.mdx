@@ -6,7 +6,7 @@ description: Judgment, Evidence, the four kinds of JudgmentRecord, and what each
 import { Code } from "@astrojs/starlight/components";
 import evidence from "@snippets/evidence.ts?raw";
 
-Every result carries the evidence behind it: the requests that left the process, what came back, how each answer was read, and the policy that read it. Nothing has to be re-run to explain a decision.
+Results include the requests that left the process, what came back, how each answer was read, and the policy that read it. You can inspect that evidence without repeating the model call.
 
 ## Judgment
 
@@ -28,7 +28,7 @@ type Judgment<T> =
 
 - `code`: a predicate that ran locally, with its `label` and boolean `truth`. Recorded alongside model answers so the trace shows the whole decision, not only the part that involved inference.
 - `noul`: a proposition, with the `instructions` sent, the `probability` of yes, and the `truth` the policy assigned.
-- `choice`: a selection, with the chosen option, `confidence`, the full `probabilities`, and whether it was `accepted`.
+- `choice`: a Choice, with the chosen option, `confidence`, the full `probabilities`, and whether it was `accepted`.
 - `score`: a measurement, with the `score`, `confidence`, `probabilities`, and `accepted`.
 
 `evidence.requests` records each request: the `state` the model saw, the `questions`, the `answers`, token `usage`, and whether the response was `cached`. Summing `usage.input_tokens` over a query's requests is what it cost.

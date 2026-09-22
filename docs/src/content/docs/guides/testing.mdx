@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: grade a meaning against labelled fixtures, and run expressions against a fake transport.
+description: grade a meaning against labeled fixtures, and run expressions against a fake transport.
 ---
 
 import { Code } from "@astrojs/starlight/components";
@@ -11,7 +11,9 @@ There are two things to test: whether a meaning means what you think, and whethe
 
 ## Grading a meaning
 
-`grade(meaning, fixtures, options)` judges the meaning against labelled examples and reports how it did. `expected` on each fixture is what a careful person would answer.
+`grade(meaning, fixtures, options)` judges the meaning against labeled examples and reports how it did. `expected` on each fixture is what a careful person would answer.
+
+`grade` accepts a condition—a string, code predicate, or meaning—not a branch, query, scale, or Choice. Test the application code around those expressions with a fake transport.
 
 <Code lang="ts" code={gradeSnippet} />
 
@@ -27,10 +29,10 @@ The sample apps run this as `npm run measure`.
 
 ## A fake transport
 
-For everything else, give the runtime a transport that answers without a network. A transport is an object with `systemOne(request)`; return any `SystemOneResult` you like.
+For everything else, give the runtime a transport that answers without a network. The `jevlish/testing` entry point provides a scripted `fake` transport and answer builders for Noul, Choice, and Score questions.
 
 <Code lang="ts" code={fakeSnippet} />
 
-With a fake you can assert on the state and questions the library would have sent, drive each branch of a decision by answering `0.95`, `0.05`, or `0.5`, and test that `uncertain` reaches the code that handles it. The library's own tests use a scripted fake of this shape; `npm test` in the repository runs them with no key.
+With a fake you can assert on `client.calls`, drive each branch of a decision with `yes(0.95)`, `yes(0.05)`, or `yes(0.5)`, and test that `uncertain` reaches the code that handles it. `pick(...)` builds Choice responses and `rate(...)` builds Score responses.
 
 `createSense({ client })` keeps the fake out of the shared runtime, so tests do not leak into each other or into production code that uses the module-level `given`.

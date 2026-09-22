@@ -1,5 +1,6 @@
 import type { Scale } from "../expressions/scale.js";
 import type { Judgment } from "../judgment.js";
+import { type PartialPolicy, resolvePolicy } from "../policy.js";
 import type { Plan } from "../runtime/plan.js";
 import { type Measurement, askOne, planOne } from "./ask.js";
 import type { SubjectContext } from "./subject.js";
@@ -10,6 +11,11 @@ export class Measure<T> implements PromiseLike<Judgment<Measurement>> {
     private readonly ctx: SubjectContext<T>,
     private readonly scale: Scale<T>,
   ) {}
+
+  /** Override acceptance thresholds for this measurement. */
+  withPolicy(policy: PartialPolicy): Measure<T> {
+    return new Measure({ ...this.ctx, policy: resolvePolicy(this.ctx.policy, policy) }, this.scale);
+  }
 
   /** What would be sent, without sending it. */
   plan(): Plan {

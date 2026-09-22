@@ -107,6 +107,11 @@ export class Query<T, Ranked extends boolean = false> implements PromiseLike<Run
     private readonly state: QueryState<T> = {},
   ) {}
 
+  /** Override acceptance thresholds for this query. */
+  withPolicy(policy: PartialPolicy): Query<T, Ranked> {
+    return new Query(this.runtime, this.items, this.projection, resolvePolicy(this.policy, policy), this.state);
+  }
+
   /** Both must hold. A false code predicate drops the item without a request. */
   and(condition: ConditionLike<T>): Query<T, Ranked> {
     if (!this.state.condition) throw new SenseError(".and() needs a preceding .where().");

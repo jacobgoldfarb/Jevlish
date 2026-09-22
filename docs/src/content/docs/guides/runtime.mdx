@@ -6,7 +6,7 @@ description: configure and createSense, transports, caching, concurrency, and re
 import { Code } from "@astrojs/starlight/components";
 import runtime from "@snippets/runtime.ts?raw";
 
-A runtime owns the transport, batching, concurrency, caching, and default policy. `given`, `from`, and `grade` share one; `createSense` makes another.
+A runtime owns the transport, batching, concurrency, caching, and default policy. A Sense is the `given`, `from`, and `grade` verbs bound to one runtime. The module-level verbs share a Sense; `createSense` makes another.
 
 <Code lang="ts" code={runtime} />
 
@@ -15,6 +15,8 @@ A runtime owns the transport, batching, concurrency, caching, and default policy
 `configure(config)` replaces the shared runtime behind the module-level verbs and returns it. `createSense(config)` builds an independent one and returns `{ given, from, grade, runtime }`. Both take a `SenseConfig`; every field is optional.
 
 Use `createSense` when parts of an application need different models or policies, or when tests should not touch shared state.
+
+The root `jevlish` entry point exposes the common configuration types and `memoryCache`. Lower-level runtime primitives such as the `Runtime` class, raw answer records, and policy resolvers live under `jevlish/runtime`.
 
 ## Transport
 
@@ -30,6 +32,6 @@ Keys are the model, the state the model saw, and the questions asked, serialized
 
 ## Concurrency and batching
 
-`concurrency` (default 8) caps in-flight requests across the runtime. `questionsPerRequest` (default 32) caps questions per request; a larger question set is split into chunks, each sent and cached independently, and the answers merged. `plan()` reports the resulting `requestCount`.
+`concurrency` (default 8) caps in-flight requests across the runtime. A `from(...)` query schedules all of its subjects, while the runtime's semaphore limits how many requests are actually in flight. `questionsPerRequest` (default 32) caps questions per request; a larger question set is split into chunks, each sent and cached independently, and the answers merged. `plan()` reports the resulting `requestCount`.
 
 A `from(...)` over a thousand rows is a thousand subjects, each with its own state, so it is at least a thousand requests under the concurrency limit. `ask` over one subject with forty questions is two.

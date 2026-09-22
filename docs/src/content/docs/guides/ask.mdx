@@ -6,7 +6,7 @@ description: given().ask({...}) sends independent Noul, Score, and Choice questi
 import { Code } from "@astrojs/starlight/components";
 import ask from "@snippets/ask.ts?raw";
 
-When several independent things need judging about one subject, `given(x).ask({ ... })` asks them together. One request goes out; each key comes back as its own `Judgment`.
+When several independent things need judging about one subject, `given(x).ask({ ... })` asks them together. They share a request until the runtime's batching limit is reached; each key comes back as its own `Judgment`.
 
 <Code lang="ts" code={ask} />
 
@@ -16,7 +16,7 @@ Each value in the object is one of:
 
 - A **condition**: a string, a code predicate, or a meaning. Produces `Judgment<boolean>`. Composite meanings are fine; their semantic leaves become separate Noul questions in the same request and are combined locally.
 - A **scale**. Produces `Judgment<Measurement>`.
-- A **selection**: `chooseFrom(candidates).by(criterion)`, optionally `.orNone(...)`. Produces `Judgment<C>` or `Judgment<C | null>`.
+- A **Choice**: `chooseFrom(candidates).by(criterion)`, optionally `.orNone(...)`. Produces `Judgment<C>` or `Judgment<C | null>`.
 
 The result type is inferred per key, so `answers.severity.value` is a `Measurement` and `answers.area.value` is one of the `AREAS`.
 

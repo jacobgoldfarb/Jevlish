@@ -5,8 +5,10 @@ const disruption = scale<Ticket>("how much this disrupts the customer's work")
   .from("Work continues; the problem is cosmetic")
   .to("The task cannot be completed");
 
+const isOpen = (ticket: Ticket) => ticket.status === "open";
+
 const queue = await from(tickets)
-  .where((t) => t.status === "open")
+  .where(isOpen)
   .and("the message reports a failure in the product")
   .rankedBy(disruption, "highest first")
   .take(10);

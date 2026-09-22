@@ -1,7 +1,7 @@
 {
   "name": "jevlish",
   "version": "0.2.0",
-  "description": "TypeScript expressions that compile to Jev requests.",
+  "description": "Typed Jev judgments for TypeScript business logic.",
   "author": "Jacob Goldfarb",
   "license": "MIT",
   "repository": {
@@ -25,6 +25,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./testing": {
+      "types": "./dist/testkit.d.ts",
+      "default": "./dist/testkit.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
     }
   },
   "files": [

@@ -31,12 +31,14 @@ A meaning is a proposition the model judges about a subject: named, composable, 
 
 The shape matters. `blocked.unless(saysResolved).or(threatensToLeave)` qualifies only the `blocked` branch with the resolution check, so a churn threat escalates regardless. Writing it as one sentence would leave that to the model.
 
+Within one subject, identical semantic leaves are deduplicated by their instructions and criteria. Reusing the same meaning in two branches therefore does not ask the same Noul twice.
+
 `all(...)`, `any(...)`, and `not(...)` are the same operations as functions, for when you start from strings or predicates rather than a meaning.
 
 ## Inspecting
 
-`.describe()` renders the tree as text, with names where you gave them. `.toJSON()` serializes it, reducing code predicates to their names. Both are useful in logs and in `plan()` notes.
+`.describe()` renders the tree as text, with names where you gave them; query `plan()` notes use this representation. `.toJSON()` serializes the tree for your own logs or tooling, reducing code predicates to their names.
 
 ## Grading
 
-Because a meaning is a value, it can be tested. `grade(meaning, fixtures)` runs it against labelled examples and reports accuracy, coverage, and abstentions. See [Testing](/Jevlish/guides/testing/).
+Because a meaning is a value, it can be tested. `grade(meaning, fixtures)` runs it against labeled examples and reports accuracy, coverage, and abstentions. See [Testing](/Jevlish/guides/testing/).

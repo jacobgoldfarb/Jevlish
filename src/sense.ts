@@ -26,7 +26,7 @@ export function createSense(config: SenseConfig = {}): Sense {
 let shared: Sense | undefined;
 
 /** Configure the module-level verbs. Without this they read TYPESAFE_API_KEY on first use. */
-export function configure(config: SenseConfig): Sense {
+export function configure(config: SenseConfig = {}): Sense {
   shared = createSense(config);
   return shared;
 }
@@ -46,7 +46,7 @@ export function from<T>(items: readonly T[]): From<T> {
   return current().from(items);
 }
 
-/** Grade a meaning against labelled fixtures on the shared runtime. */
+/** Grade a meaning against labeled fixtures on the shared runtime. */
 export function grade<T>(
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],

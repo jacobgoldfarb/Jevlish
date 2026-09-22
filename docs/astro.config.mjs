@@ -19,7 +19,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "jevlish",
-      description: "TypeScript expressions that compile to Jev requests.",
+      description: "Typed Jev judgments for TypeScript business logic.",
       social: [{ icon: "github", label: "GitHub", href: repo }],
       editLink: { baseUrl: `${repo}/edit/main/docs/` },
       lastUpdated: true,
@@ -48,24 +48,39 @@ export default defineConfig({
         {
           label: "Start",
           items: [
-            { slug: "start/introduction" },
+            { label: "Introduction", link: "/Jevlish/" },
             { slug: "start/install" },
             { slug: "start/quickstart" },
           ],
         },
         {
-          label: "Guides",
+          label: "Entry points",
           items: [
             { slug: "guides/given" },
             { slug: "guides/from" },
+          ],
+        },
+        {
+          label: "Question types",
+          items: [
             { slug: "guides/meanings" },
             { slug: "guides/scales" },
             { slug: "guides/choosing" },
             { slug: "guides/ask" },
+          ],
+        },
+        {
+          label: "Execution and policy",
+          items: [
             { slug: "guides/uncertainty" },
             { slug: "guides/running" },
             { slug: "guides/evidence" },
             { slug: "guides/runtime" },
+          ],
+        },
+        {
+          label: "Quality",
+          items: [
             { slug: "guides/testing" },
           ],
         },

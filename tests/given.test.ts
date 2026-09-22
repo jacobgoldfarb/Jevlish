@@ -98,7 +98,7 @@ describe("given().when()", () => {
     const sense = createSense({ client });
     expect((await sense.given(open).when(blocked).run()).status).toBe("uncertain");
     expect(
-      await sense.given(open).withPolicy({ noul: { yesAbove: 0.6 } }).when(blocked).run(),
+      await sense.given(open).when(blocked).withPolicy({ noul: { yesAbove: 0.6 } }).run(),
     ).toMatchObject({ status: "decided", value: true });
   });
 

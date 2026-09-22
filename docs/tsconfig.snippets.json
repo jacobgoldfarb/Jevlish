@@ -8,7 +8,10 @@
     "declarationMap": false,
     "sourceMap": false,
     "paths": {
-      "jevlish": ["../src/index.ts"]
+      "jevlish": ["../src/index.ts"],
+      "jevlish/runtime": ["../src/runtime.ts"],
+      "jevlish/testing": ["../src/testkit.ts"],
+      "jevlish/types": ["../src/types.ts"]
     }
   },
   "include": ["snippets"]

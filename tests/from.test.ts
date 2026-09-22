@@ -74,6 +74,16 @@ describe("from().where()", () => {
     expect(result.uncertain).toHaveLength(5);
   });
 
+  it("accepts policy overrides after the query is built", async () => {
+    const client = fake(() => yes(0.7));
+    const result = await createSense({ client })
+      .from([tickets[0]!])
+      .where(reportsProblem)
+      .withPolicy({ noul: { yesAbove: 0.6 } })
+      .run();
+    expect(result.accepted).toEqual([tickets[0]]);
+  });
+
   it("ranks lowest first when asked", async () => {
     const result = await createSense({ client: oracle })
       .from(tickets.filter((ticket) => ticket.id !== "e"))

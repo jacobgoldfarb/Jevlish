@@ -46,10 +46,10 @@ Awaiting the branch returns a `Decision`:
 
 ## Uncertainty never falls through
 
-A branch without `.whenUncertain()` cannot run. Awaiting one rejects with a `SenseError`, and its fulfilled type is `never` so the omission also shows in the editor. This is deliberate: an abstaining model is not a "no", and the code has to say what happens in that case.
+A branch without `.whenUncertain()` cannot run. Awaiting one rejects with a `SenseError` before judging the predicate, so the mistake sends no request. Its fulfilled type is `never`, which also exposes the omission in the editor. An abstaining model is not a "no"; the code has to say what happens in that case.
 
 <Code lang="ts" code={missing} />
 
 ## Other verbs on a subject
 
-`given(x)` also starts `.measure(scale)`, `.chooseFrom(candidates)`, and `.ask({ ... })`. They are covered in [Scales](/Jevlish/guides/scales/), [Choosing](/Jevlish/guides/choosing/), and [Asking several questions](/Jevlish/guides/ask/). `.withPolicy({...})` overrides the acceptance thresholds for this one expression; see [Uncertainty](/Jevlish/guides/uncertainty/).
+`given(x)` also starts `.measure(scale)`, `.chooseFrom(candidates)`, and `.ask({ ... })`. They are covered in [Scales](/Jevlish/guides/scales/), [Choosing](/Jevlish/guides/choosing/), and [Asking several questions](/Jevlish/guides/ask/). `.withPolicy({...})` overrides acceptance thresholds on `given` or on any runnable expression it builds; see [Uncertainty](/Jevlish/guides/uncertainty/).

@@ -9,7 +9,7 @@ cd apps/support-desk && npm install
 npm start                     # run the pipeline, print the desk report
 npm run plan                  # what would be sent, without spending anything
 npm run trace                 # run, then dump every judgment behind each decision
-npm run measure               # test the vocabulary against labelled fixtures
+npm run measure               # test the vocabulary against labeled fixtures
 ```
 
 The API key is read from the repo-root `.env` (`TYPESAFE_API_KEY`).
@@ -25,7 +25,7 @@ The API key is read from the repo-root `.env` (`TYPESAFE_API_KEY`).
 
 `src/vocabulary.ts` is the domain language: `blocked`, `saysResolved`,
 `threatensToLeave`, `needsAttention`, `reportsProblem`, `disruption`.
-`src/fixtures.ts` holds labelled examples for `blocked`; `npm run measure`
+`src/fixtures.ts` holds labeled examples for `blocked`; `npm run measure`
 reports accuracy, coverage, and abstentions.
 
 ## Things to notice
