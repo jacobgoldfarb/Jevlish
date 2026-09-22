@@ -4,8 +4,6 @@ A sample app: a support inbox triaged with `jevlish`. Every judgment in the
 pipeline is a sentence; everything else is ordinary TypeScript.
 
 ```sh
-# from the repo root
-npm run build                 # jevlish is consumed as a built package
 cd apps/support-desk && npm install
 
 npm start                     # run the pipeline, print the desk report

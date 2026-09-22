@@ -4,8 +4,7 @@ Mine user feedback for product insights. Every number in the report is a
 count of judgments; every quote is a user's own words. Nothing is generated.
 
 ```sh
-# from the repo root
-npm run build && cd apps/insights && npm install
+cd apps/insights && npm install
 
 npm start          # the report
 npm run plan       # what would be sent, without spending anything
