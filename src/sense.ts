@@ -12,6 +12,7 @@ export interface Sense {
   grade<T>(meaning: ConditionLike<T>, fixtures: readonly Fixture<T>[], options?: GradeOptions<T>): Promise<GradeReport<T>>;
 }
 
+/** Build an independent runtime with its own transport, cache, concurrency, and policy. */
 export function createSense(config: SenseConfig = {}): Sense {
   const runtime = new Runtime(config);
   return {
@@ -35,14 +36,17 @@ function current(): Sense {
   return shared;
 }
 
+/** Judge one value: `given(ticket).when(...)`, `.chooseFrom(...)`, `.measure(...)`, or `.ask({...})`. */
 export function given<T>(subject: T): Given<T> {
   return current().given(subject);
 }
 
+/** Filter, rank, and limit a list: `from(items).where(...).rankedBy(...).take(n)`. */
 export function from<T>(items: readonly T[]): From<T> {
   return current().from(items);
 }
 
+/** Grade a meaning against labelled fixtures on the shared runtime. */
 export function grade<T>(
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],

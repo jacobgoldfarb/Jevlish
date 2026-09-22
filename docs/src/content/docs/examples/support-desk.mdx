@@ -1,0 +1,44 @@
+---
+title: Support desk
+description: A support inbox triaged with jevlish. Every judgment in the pipeline is a sentence; everything else is ordinary TypeScript.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import vocabulary from "@snippets/vocabulary.ts?raw";
+
+A sample app in the repository: [`apps/support-desk`](https://github.com/jacobgoldfarb/Jevlish/tree/main/apps/support-desk). It consumes `jevlish` from npm like any other application would.
+
+```sh
+cd apps/support-desk && npm install
+
+npm start                     # run the pipeline, print the desk report
+npm run plan                  # what would be sent, without spending anything
+npm run trace                 # run, then dump every judgment behind each decision
+npm run measure               # test the vocabulary against labelled fixtures
+```
+
+The API key is read from the repo-root `.env` (`TYPESAFE_API_KEY`).
+
+## What it does
+
+Four stages, each one expression:
+
+- **Escalation policy**: `given(ticket).when(needsAttention).do(escalate).otherwise(leaveUnchanged).whenUncertain(flagForReview)`
+- **Priority queue**: `from(tickets).where(isOpen).and(reportsProblem).rankedBy(disruption).take(5)`
+- **Incident linking**: `given({ ticket }).chooseFrom(incidents).by("the incident that explains…").orNone(…)`
+- **Owner suggestion**: `given({ ticket }).chooseFrom(onCall).by("whose experience best matches…").orNone(…)`
+
+## The vocabulary
+
+`src/vocabulary.ts` is the domain language. The samples on this site use the same one:
+
+<Code lang="ts" code={vocabulary} title="vocabulary.ts" />
+
+`src/fixtures.ts` holds labelled examples for `blocked`; `npm run measure` reports accuracy, coverage, and abstentions.
+
+## Things to notice
+
+- Closed tickets never reach the model. The code predicate under `.and()` folds the whole expression to `false` before anything is sent. `npm run plan` shows them as settled by code.
+- `needsAttention` is `blocked.unless(saysResolved).or(threatensToLeave).and(isOpen)`. The shape matters: resolution qualifies only the `blocked` branch, so a churn threat escalates regardless.
+- "Search is slow but works" tends to land between the thresholds. It goes to review, never silently to `otherwise`.
+- Every `chooseFrom` returns one of your own objects, or `null` for `orNone`, or `uncertain`. Three different things, kept apart.

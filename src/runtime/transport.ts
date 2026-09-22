@@ -14,6 +14,7 @@ export interface Cache {
   set(key: string, value: SystemOneResult<Questions>): Promise<void> | void;
 }
 
+/** An in-process cache with no eviction. Pass it as `cache` to `configure` or `createSense`. */
 export function memoryCache(): Cache & { readonly size: number; clear(): void } {
   const store = new Map<string, SystemOneResult<Questions>>();
   return {

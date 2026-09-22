@@ -1,0 +1,38 @@
+---
+title: Running and planning
+description: Expressions are values. await and .run() execute them; .plan() shows what would be sent without sending it.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import plan from "@snippets/running-plan.ts?raw";
+import values from "@snippets/running-values.ts?raw";
+
+An expression is a value until you run it. Building one sends nothing; `await` or `.run()` sends the requests; `.plan()` describes them without sending.
+
+## Plans
+
+<Code lang="ts" code={plan} />
+
+A `Plan` has:
+
+- `subjectCount`: how many subjects the expression covers (one for `given`, the list length for `from`).
+- `decidedByCode`: how many of them code predicates settled with no request.
+- `questionCount` and `requestCount`: what would be asked, and how it batches.
+- `requests`: each request's `state` (exactly what the model would see) and `questions`.
+- `notes`: a description of the filter, ranking, and limit on a query.
+
+Every runnable expression has `.plan()`: predicates, branches, queries, measurements, choices, and `ask`. On a branch, `plan()` does not run any handler.
+
+## Running
+
+`await expression` and `await expression.run()` do the same thing. Each call runs the expression again: a second request, or a cache hit if a cache is configured and nothing changed. Expressions are not memoized.
+
+<Code lang="ts" code={values} />
+
+## Keep expressions in plain functions
+
+An `async` function awaits its return value. A function that returns `given(t).when(blocked)` hands the caller an expression they can `.plan()`, `.run()`, or `.withPolicy()` further. An `async` function that returns the same thing hands them a `Promise<Judgment<boolean>>` that is already in flight. If callers need to inspect before spending, build expressions in plain functions and let the caller decide when to `await`.
+
+## Errors
+
+A `SenseError` means the expression itself is malformed or incomplete: an empty proposition, `.and()` before `.where()`, a branch awaited without `.whenUncertain()`, a scale with one level. Transport failures from the underlying SDK propagate as they are. A thrown error is a failed request, never evidence about the proposition; it does not become `uncertain`.

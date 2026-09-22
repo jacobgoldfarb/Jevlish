@@ -7,6 +7,7 @@ import { stableStringify } from "../state.js";
 import { Semaphore } from "./semaphore.js";
 import type { Cache, Transport } from "./transport.js";
 
+/** Options for `configure` and `createSense`. Every field is optional. */
 export interface SenseConfig {
   /** API key; falls back to TYPESAFE_API_KEY. Ignored when `client` is given. */
   readonly apiKey?: string;
@@ -24,6 +25,7 @@ export interface SenseConfig {
   readonly cache?: Cache;
 }
 
+/** One request as it would be sent: the state the model sees and the questions asked about it. */
 export interface PlannedRequest {
   readonly state: EntryType;
   readonly questions: Questions;
@@ -40,6 +42,7 @@ export class Runtime {
   private readonly config: SenseConfig;
   private transport: Transport | undefined;
 
+  /** Prefer `createSense(config)`, which returns the verbs bound to the runtime. */
   constructor(config: SenseConfig = {}) {
     this.config = config;
     this.policy = resolvePolicy(defaultPolicy, config.policy);

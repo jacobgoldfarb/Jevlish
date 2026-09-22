@@ -1,0 +1,35 @@
+---
+title: Runtime
+description: configure and createSense, transports, caching, concurrency, and request batching.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import runtime from "@snippets/runtime.ts?raw";
+
+A runtime owns the transport, batching, concurrency, caching, and default policy. `given`, `from`, and `grade` share one; `createSense` makes another.
+
+<Code lang="ts" code={runtime} />
+
+## `configure` and `createSense`
+
+`configure(config)` replaces the shared runtime behind the module-level verbs and returns it. `createSense(config)` builds an independent one and returns `{ given, from, grade, runtime }`. Both take a `SenseConfig`; every field is optional.
+
+Use `createSense` when parts of an application need different models or policies, or when tests should not touch shared state.
+
+## Transport
+
+By default a runtime creates a `TypeSafeClient` on first use, reading `apiKey` from the config or `TYPESAFE_API_KEY` from the environment. Pass `client` to supply your own. A transport is anything with `systemOne(request): Promise<SystemOneResult>`; the SDK client satisfies it directly, and a scripted fake satisfies it in tests. See [Testing](/Jevlish/guides/testing/).
+
+`model` selects the Jev model. It defaults to the SDK's default, `jev-latest`.
+
+## Cache
+
+`cache` is any object with `get(key)` and `set(key, value)`, sync or async. `memoryCache()` is an in-process one with no eviction and a `size` and `clear()` for tests.
+
+Keys are the model, the state the model saw, and the questions asked, serialized with sorted keys. Two expressions that would send the same request share a cache entry regardless of how they were built. Thresholds are applied after the cache: a cached response is the raw answer, so changing the policy changes decisions without invalidating anything. A cached request still appears in evidence, with `cached: true` and the original response's `usage`.
+
+## Concurrency and batching
+
+`concurrency` (default 8) caps in-flight requests across the runtime. `questionsPerRequest` (default 32) caps questions per request; a larger question set is split into chunks, each sent and cached independently, and the answers merged. `plan()` reports the resulting `requestCount`.
+
+A `from(...)` over a thousand rows is a thousand subjects, each with its own state, so it is at least a thousand requests under the concurrency limit. `ask` over one subject with forty questions is two.

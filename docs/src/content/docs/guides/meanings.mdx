@@ -1,0 +1,42 @@
+---
+title: Meanings
+description: means, including/excluding, named, and composition that keeps nodes instead of concatenating prose.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import define from "@snippets/meanings-define.ts?raw";
+import compose from "@snippets/meanings-compose.ts?raw";
+import boundaryError from "@snippets/meanings-boundary-error.ts?raw";
+
+A meaning is a proposition the model judges about a subject: named, composable, inspectable, and graded against fixtures like any other function. A string in a condition is a meaning without a name. `means(...)` gives it one, and a boundary.
+
+## Defining one
+
+<Code lang="ts" code={define} />
+
+- `means<T>(proposition)` states what is being judged. `T` is the subject type; it keeps a `Meaning<Ticket>` from being used on an `Engineer`.
+- `.including(text)` draws the boundary from the inside: cases the proposition covers even when they look marginal. It becomes the Noul's `criteria.true`.
+- `.excluding(text)` draws it from the outside: cases the proposition does not cover even when they look close. It becomes `criteria.false`.
+- `.named(name)` labels the meaning in traces, plans, fixtures, and error messages.
+
+`including` and `excluding` apply to a single proposition. They throw on a composite, because there is no one Noul to attach the boundary to.
+
+<Code lang="ts" code={boundaryError} />
+
+## Composing
+
+`.and()`, `.or()`, `.unless()`, and `.not()` combine meanings with strings, code predicates, and other meanings. The result is an expression tree. The propositions are never rewritten or joined into a longer sentence; each semantic leaf becomes its own Noul question, each code leaf runs locally, and the answers are combined with three-valued logic.
+
+<Code lang="ts" code={compose} />
+
+The shape matters. `blocked.unless(saysResolved).or(threatensToLeave)` qualifies only the `blocked` branch with the resolution check, so a churn threat escalates regardless. Writing it as one sentence would leave that to the model.
+
+`all(...)`, `any(...)`, and `not(...)` are the same operations as functions, for when you start from strings or predicates rather than a meaning.
+
+## Inspecting
+
+`.describe()` renders the tree as text, with names where you gave them. `.toJSON()` serializes it, reducing code predicates to their names. Both are useful in logs and in `plan()` notes.
+
+## Grading
+
+Because a meaning is a value, it can be tested. `grade(meaning, fixtures)` runs it against labelled examples and reports accuracy, coverage, and abstentions. See [Testing](/Jevlish/guides/testing/).

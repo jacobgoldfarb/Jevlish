@@ -29,14 +29,17 @@ export class Scale<T = unknown> {
     return this.levels.length - 1;
   }
 
+  /** Give the scale a name for traces and plans. */
   named(name: string): Scale<T> {
     return new Scale(this.question, this.levels, name);
   }
 
+  /** The Score question this scale compiles to. */
   toQuestion(): ScoreQuestion {
     return score(this.question, this.levels as unknown as ScoreCriteria);
   }
 
+  /** Serializable form: name, question, and levels. */
   toJSON(): unknown {
     return { name: this.name, question: this.question, levels: this.levels };
   }

@@ -8,7 +8,7 @@
     "type": "git",
     "url": "git+https://github.com/jacobgoldfarb/Jevlish.git"
   },
-  "homepage": "https://github.com/jacobgoldfarb/Jevlish#readme",
+  "homepage": "https://jacobgoldfarb.github.io/Jevlish/",
   "bugs": {
     "url": "https://github.com/jacobgoldfarb/Jevlish/issues"
   },
@@ -41,7 +41,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "example": "node --env-file=.env --import tsx examples/triage.ts"
+    "example": "node --env-file=.env --import tsx examples/triage.ts",
+    "docs": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build"
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0"

@@ -1,0 +1,35 @@
+---
+title: Asking several questions at once
+description: given().ask({...}) sends independent Noul, Score, and Choice questions about one subject in one request.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import ask from "@snippets/ask.ts?raw";
+
+When several independent things need judging about one subject, `given(x).ask({ ... })` asks them together. One request goes out; each key comes back as its own `Judgment`.
+
+<Code lang="ts" code={ask} />
+
+## What can be asked
+
+Each value in the object is one of:
+
+- A **condition**: a string, a code predicate, or a meaning. Produces `Judgment<boolean>`. Composite meanings are fine; their semantic leaves become separate Noul questions in the same request and are combined locally.
+- A **scale**. Produces `Judgment<Measurement>`.
+- A **selection**: `chooseFrom(candidates).by(criterion)`, optionally `.orNone(...)`. Produces `Judgment<C>` or `Judgment<C | null>`.
+
+The result type is inferred per key, so `answers.severity.value` is a `Measurement` and `answers.area.value` is one of the `AREAS`.
+
+## Code predicates cost nothing
+
+A predicate in the object is evaluated locally and recorded as a `code` judgment. It adds nothing to the request. `paying: (f) => f.plan !== "free"` is there so the answer sits next to the others with the same shape, not because the model is consulted.
+
+If every question is settled by code, no request is sent at all.
+
+## Shared evidence
+
+All answers from one `ask` share the same `evidence` object: the one request, every judgment, and the policy. Checking `answers.problem.evidence === answers.area.evidence` is true. This is what makes it possible to count intersections afterwards, as the [Insights example](/Jevlish/examples/insights/) does, knowing they came from the same look at the same message.
+
+## Batching
+
+A runtime splits a question set into requests of at most `questionsPerRequest` (default 32) and caches each chunk independently. A large `ask` may therefore become more than one request; `plan()` shows how many. See [Runtime](/Jevlish/guides/runtime/).

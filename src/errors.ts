@@ -4,6 +4,7 @@
  * a timeout is never evidence about a proposition.
  */
 export class SenseError extends Error {
+  /** `options.cause` carries the underlying error when one exists. */
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "SenseError";

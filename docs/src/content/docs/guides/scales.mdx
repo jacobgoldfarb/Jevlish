@@ -1,0 +1,41 @@
+---
+title: Scales and measuring
+description: scale().from().through().to(), given().measure(), and ranking with a scale.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import define from "@snippets/scales-define.ts?raw";
+import measure from "@snippets/scales-measure.ts?raw";
+
+A scale is a degree, not a probability. It describes ordered situations and the model returns a position along them. It is kept distinct from predicates on purpose: "how much does this disrupt work" is a different question from "is this disruptive".
+
+## Defining one
+
+<Code lang="ts" code={define} />
+
+`.from(lowest)` starts the levels, `.through(level)` adds intermediate ones (repeatable), and `.to(highest)` finishes. A scale needs at least two levels and supports at most ten. Each level is a description of a situation, not a number; the numbers are positions, 0 through `scale.top`.
+
+A scale compiles to a Jev Score question with the levels as its criteria.
+
+## Measuring one subject
+
+`given(x).measure(scale)` resolves to a `Judgment<Measurement>`.
+
+<Code lang="ts" code={measure} />
+
+A decided measurement carries:
+
+- `score`: the expected position on the scale, a real number from 0 to `top`.
+- `normalized`: `score / top`, from 0 to 1.
+- `level` and `levelDescription`: the most likely level and its text.
+- `confidence` and `probabilities`: what the policy compared against `score.minConfidence`, and the distribution behind it.
+
+The judgment is `uncertain` when confidence misses the threshold.
+
+## Ranking with a scale
+
+`from(items).rankedBy(scale, order)` measures each accepted item and sorts by `score`. See [Filtering and ranking](/Jevlish/guides/from/#ranking).
+
+## Inside `ask`
+
+A scale can be one of the questions in `given(x).ask({ ... })`, alongside conditions and selections; it produces a `Judgment<Measurement>` under its key. See [Asking several questions](/Jevlish/guides/ask/).

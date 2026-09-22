@@ -14,6 +14,7 @@ export interface SemanticCondition {
   readonly name?: string;
 }
 
+/** A leaf that runs locally. Never sent; folded before any request is built. */
 export interface CodeCondition<T> {
   readonly type: "code";
   readonly predicate: (subject: T) => boolean;
@@ -37,6 +38,7 @@ export interface NotCondition<T> {
   readonly inner: Condition<T>;
 }
 
+/** The expression tree behind every predicate. */
 export type Condition<T> =
   | SemanticCondition
   | CodeCondition<T>
@@ -121,26 +123,32 @@ export class Meaning<T = unknown> {
     return new Meaning(node, name);
   }
 
+  /** Both must hold. */
   and(other: ConditionLike<T>): Meaning<T> {
     return new Meaning(conjoin(this.node, other));
   }
 
+  /** Either may hold. */
   or(other: ConditionLike<T>): Meaning<T> {
     return new Meaning(disjoin(this.node, other));
   }
 
+  /** Holds only if the exception does not: `a.unless(b)` is `a and not b`. */
   unless(other: ConditionLike<T>): Meaning<T> {
     return new Meaning(without(this.node, other));
   }
 
+  /** The negation. Uncertain stays uncertain. */
   not(): Meaning<T> {
     return new Meaning({ type: "not", inner: this.node });
   }
 
+  /** Human-readable rendering of the expression tree. */
   describe(): string {
     return describeCondition(this.node);
   }
 
+  /** Serializable form: the name and the expression tree, with code predicates reduced to their names. */
   toJSON(): unknown {
     return { name: this.name, expression: serialize(this.node) };
   }

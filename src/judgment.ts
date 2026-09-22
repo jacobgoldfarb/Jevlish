@@ -11,6 +11,7 @@ import type { AcceptancePolicy } from "./policy.js";
 /** Three-valued truth. A predicate resolves to true, false, or stays unresolved. */
 export type Truth = boolean | "uncertain";
 
+/** A raw model answer to one question, before the policy is applied. */
 export type Answer = NoulResponse | ChoiceResponse | ScoreResponse;
 
 /** One request that actually left the process, with what came back. */
@@ -74,14 +75,17 @@ export type Judgment<T> =
   | { readonly status: "decided"; readonly value: T; readonly evidence: Evidence }
   | { readonly status: "uncertain"; readonly evidence: Evidence };
 
+/** A judgment that passed the policy. `decided(null, evidence)` is how `orNone` reports "none of these". */
 export function decided<T>(value: T, evidence: Evidence): Judgment<T> {
   return { status: "decided", value, evidence };
 }
 
+/** A judgment the policy would not accept. */
 export function uncertain<T = never>(evidence: Evidence): Judgment<T> {
   return { status: "uncertain", evidence };
 }
 
+/** Type guard for the decided case. */
 export function isDecided<T>(
   judgment: Judgment<T>,
 ): judgment is Extract<Judgment<T>, { status: "decided" }> {

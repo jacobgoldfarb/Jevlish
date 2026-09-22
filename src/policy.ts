@@ -24,6 +24,7 @@ export interface AcceptancePolicy {
   };
 }
 
+/** Any subset of the thresholds; the rest come from the runtime's policy. */
 export interface PartialPolicy {
   readonly noul?: Partial<AcceptancePolicy["noul"]>;
   readonly choice?: Partial<AcceptancePolicy["choice"]>;
@@ -37,6 +38,7 @@ export const defaultPolicy: AcceptancePolicy = {
   score: { minConfidence: 0.5 },
 };
 
+/** Layer an override on a base policy. Throws a RangeError unless `noBelow < yesAbove`. */
 export function resolvePolicy(base: AcceptancePolicy, override?: PartialPolicy): AcceptancePolicy {
   if (!override) return base;
   const policy: AcceptancePolicy = {

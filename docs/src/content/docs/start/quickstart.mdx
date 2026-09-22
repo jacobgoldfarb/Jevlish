@@ -1,0 +1,42 @@
+---
+title: Quickstart
+description: The two headline expressions, read one line at a time.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import decision from "@snippets/hero-decision.ts?raw";
+import queue from "@snippets/hero-queue.ts?raw";
+import support from "@snippets/support.ts?raw";
+
+The samples on this site share a small support-desk domain: a `Ticket`, a few `Engineer`s, and three handlers. Nothing in it is specific to jevlish.
+
+<details>
+<summary>The shared domain</summary>
+<Code lang="ts" code={support} title="support.ts" />
+</details>
+
+## Judge one thing
+
+<Code lang="ts" code={decision} title="hero-decision.ts" />
+
+Line by line:
+
+- `means<Ticket>("...")` defines a **meaning**: a proposition the model judges about a ticket. `.excluding("...")` draws the boundary from the outside. It becomes the Noul's `criteria.false`, so "search is slow but works" does not count as blocked.
+- `given(ticket)` names the subject. Everything after it is about that one ticket.
+- `.seenAs((t) => ({ subject, body }))` is what the model sees. Code predicates and handlers still receive the whole `Ticket`.
+- `.when(blocked)` states the condition. `.and((t) => t.status === "open")` refines it with a code predicate. If the predicate is false, the conjunction is false and no request is sent.
+- `.do(escalate).otherwise(leave).whenUncertain(review)` gives all three outcomes a handler. Without `.whenUncertain()` the branch cannot run, and awaiting it rejects.
+- `await` runs it. `decision.branch` names the handler that ran; `decision.result` is what it returned; `decision.judgment.evidence` is every request and answer behind it.
+
+## Filter and rank a list
+
+<Code lang="ts" code={queue} title="hero-queue.ts" />
+
+- `scale<Ticket>("...").from(low).to(high)` defines a **scale**: ordered situations, two to ten of them. The model returns a position along them, not a yes or no.
+- `from(tickets)` names the collection. `.where(...)` and `.and(...)` filter it with the same three kinds of condition `given` accepts: a code predicate, a string, or a meaning.
+- `.rankedBy(disruption, "highest first")` scores each accepted ticket once and sorts. `.take(10)` limits. Both run locally.
+- The result has three buckets. Every ticket lands in exactly one. `uncertain` is not a soft reject: it is the tickets the policy would not decide, kept where you can see them.
+
+## Before you spend
+
+Replace `await` with `.plan()` on either expression and nothing is sent. The plan lists the requests that would go out, the state the model would see, and how many subjects code alone settled. See [Running and planning](/Jevlish/guides/running/).

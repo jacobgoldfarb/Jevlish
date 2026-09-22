@@ -1,0 +1,46 @@
+---
+title: Filtering and ranking a list
+description: from, where, rankedBy, take, and the three buckets every item lands in.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import filter from "@snippets/from-filter.ts?raw";
+import ranked from "@snippets/from-ranked.ts?raw";
+
+`from(items)` starts an expression about a list. The same conditions `given` accepts filter it; a scale ranks it; `take` limits it. The model judges each item once. Partitioning, sorting, and limiting run locally.
+
+## Filtering
+
+`.where(condition)` states the filter. `.and()`, `.or()`, and `.unless()` refine it exactly as they do on a predicate, with the same three-valued logic. Each item is judged independently, and a false code predicate on an item drops it without a request for that item.
+
+<Code lang="ts" code={filter} />
+
+The result has three buckets, and every item lands in exactly one:
+
+- `accepted`: the condition resolved to true.
+- `rejected`: it resolved to false.
+- `uncertain`: the policy would not decide. These are not rejected. They are the items you have not yet made a decision about.
+
+`evidence` covers the whole query: every request that went out and every judgment that was recorded, across all items.
+
+## Ranking
+
+`.rankedBy(scale, order)` scores each accepted item on a [scale](/Jevlish/guides/scales/) and sorts `accepted` by that score. `order` is `"highest first"` (the default) or `"lowest first"`. The score is asked in the same request as the filter, so ranking adds a question, not a round trip.
+
+<Code lang="ts" code={ranked} />
+
+A ranked result adds `scored`: each accepted item with its `score` (0 to `scale.top`) and `normalized` score (0 to 1), in ranked order. An item whose score does not meet `policy.score.minConfidence` moves to `uncertain` even if its filter passed.
+
+`from(items).rankedBy(scale)` with no `.where()` scores everything.
+
+## Limiting
+
+`.take(n)` keeps the first `n` of `accepted` after ranking. It does not reduce what is asked: every item is still judged, because the ranking needs every score. To spend less, narrow the list in code first, or put a code predicate in `.where()` so the closed rows never leave the process.
+
+## Projection and policy
+
+`.seenAs(fn)` on `from` projects each item, the same as on `given`. `.withPolicy({...})` overrides the thresholds for this query. Both go before `.where()`.
+
+## Inspecting before running
+
+`.plan()` on a query reports `subjectCount`, `decidedByCode`, and the requests that would be sent, with notes describing the filter, ranking, and limit. See [Running and planning](/Jevlish/guides/running/).

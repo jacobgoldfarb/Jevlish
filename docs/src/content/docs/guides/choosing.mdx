@@ -1,0 +1,35 @@
+---
+title: Choosing from your own objects
+description: chooseFrom().seenAs().by().orNone(), and the difference between "none" and "uncertain".
+---
+
+import { Code } from "@astrojs/starlight/components";
+import choose from "@snippets/choose.ts?raw";
+
+`given(x).chooseFrom(candidates)` asks the model to pick one of the objects you pass in, by a criterion in prose. The answer is the object itself, not a label you then have to map back.
+
+<Code lang="ts" code={choose} />
+
+- `given(...)` is the subject the choice is about. Here it is a projection of the ticket, wrapped in an object so the criterion can refer to it by name.
+- `.chooseFrom(candidates)` are your objects. Up to 255 of them (254 with `orNone`); narrow the list in code first if it is bigger.
+- `.seenAs(fn)` is what the model sees of each candidate. The chosen candidate comes back whole.
+- `.by(criterion)` states the selection criterion. It compiles to a Jev Choice question with one option per candidate.
+- `.orNone(description)` adds a "none of these" option, described so the model knows what it means.
+
+## Three outcomes, kept apart
+
+A choice resolves to `Judgment<C>` or, with `orNone`, `Judgment<C | null>`:
+
+- `status: "decided"` with `value` one of your candidates: the model chose, and its confidence met `policy.choice.minConfidence`.
+- `status: "decided"` with `value: null`: the model chose "none of these". That is a legitimate answer with high confidence, not an abstention.
+- `status: "uncertain"`: confidence missed the policy. Nothing was chosen.
+
+Conflating the last two is the mistake this API is shaped to prevent. "No engineer fits" and "I could not tell" call for different code.
+
+## Inside `ask`
+
+`chooseFrom(candidates).by(criterion)` without a `given` in front is a selection value. Put it in `given(x).ask({ ... })` to ask it alongside other questions in the same request. See [Asking several questions](/Jevlish/guides/ask/).
+
+## Evidence
+
+The `choice` record in `judgment.evidence.judgments` has the chosen option id, the confidence, and the full probability distribution over options, so a close call is visible after the fact. See [Evidence and tracing](/Jevlish/guides/evidence/).

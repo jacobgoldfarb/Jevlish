@@ -1,0 +1,52 @@
+---
+title: Uncertainty and acceptance policy
+description: Three-valued truth, the default thresholds, withPolicy, and how code predicates short-circuit requests.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import policy from "@snippets/policy.ts?raw";
+import shortCircuit from "@snippets/short-circuit.ts?raw";
+
+A model answer is a probability or a distribution. A decision is yes or no. The acceptance policy is the set of thresholds that turns one into the other, and everything the policy will not decide stays `uncertain`.
+
+## Three-valued truth
+
+Every predicate resolves to `true`, `false`, or `"uncertain"`. Composite conditions combine these with Kleene logic rather than multiplying probabilities:
+
+- `false and uncertain` is `false`; `true and uncertain` is `uncertain`.
+- `true or uncertain` is `true`; `false or uncertain` is `uncertain`.
+- `not uncertain` is `uncertain`.
+
+The tables live in the `logic` namespace if you need them directly.
+
+## The thresholds
+
+`defaultPolicy` is a conservative starting point:
+
+- Noul: accept yes when P(yes) ≥ 0.9, accept no when P(yes) ≤ 0.1. Between the two is uncertain.
+- Choice: accept the chosen option when confidence ≥ 0.5.
+- Score: accept a score when confidence ≥ 0.5.
+
+Noul reports a yes-probability; Choice and Score report a distribution-derived confidence. The two are not interchangeable, so they get separate knobs. `noBelow` must be strictly less than `yesAbove`; `resolvePolicy` throws a `RangeError` otherwise.
+
+These are application thresholds, not universal truths. Tune them against your own fixtures with [`grade`](/Jevlish/guides/testing/): lowering `yesAbove` raises coverage and risks false positives; raising it does the reverse.
+
+## Setting them
+
+For the shared runtime, pass `policy` to `configure`. For one expression, `.withPolicy({...})` on `given` or `from` layers an override on the runtime's policy. Either takes any subset of the fields.
+
+<Code lang="ts" code={policy} />
+
+The policy that was applied is part of every judgment's evidence, so a result can always be read against the thresholds that produced it.
+
+## Code settles what it can before anything is sent
+
+Because `false and x` is `false` no matter what `x` is, a false code predicate under `and` decides the whole expression locally. The Noul is never asked. `plan()` reports these as `decidedByCode`.
+
+<Code lang="ts" code={shortCircuit} />
+
+The same applies per item in `from(...)`: closed tickets never reach the model when `.where((t) => t.status === "open")` is in the chain.
+
+## Thresholds apply after the cache
+
+A cached response is the raw model answer. The policy is applied when the answer is read, so changing thresholds changes decisions without invalidating the cache. See [Runtime](/Jevlish/guides/runtime/).

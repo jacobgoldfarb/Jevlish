@@ -14,8 +14,10 @@ import { type Projection, type SubjectContext, contextFor, judge, prepare } from
 /** A callback chosen by a judgment. It receives the subject and the judgment that selected it. */
 export type Action<T, R> = (subject: T, judgment: Judgment<boolean>) => R | Promise<R>;
 
+/** Which handler a branch ran. Uncertainty is its own outcome, never folded into the other two. */
 export type BranchTaken = "do" | "otherwise" | "uncertain";
 
+/** What awaiting a branch produces: the handler that ran, what it returned, and the judgment that chose it. */
 export interface Decision<R> {
   readonly branch: BranchTaken;
   readonly result: R;
@@ -41,6 +43,7 @@ export class Given<T> {
     return new Given(this.runtime, this.subject, this.projection, policy);
   }
 
+  /** State the condition: a proposition in prose, a code predicate, or a reusable meaning. */
   when(condition: ConditionLike<T>): Predicate<T> {
     return new Predicate(this.context(), toCondition(condition));
   }
@@ -77,18 +80,22 @@ export class Predicate<T> implements PromiseLike<Judgment<boolean>> {
     readonly condition: Condition<T>,
   ) {}
 
+  /** The whole subject, as passed to `given()`. */
   get subject(): T {
     return this.ctx.subject;
   }
 
+  /** Both must hold. A false code predicate settles the conjunction without a request. */
   and(condition: ConditionLike<T>): Predicate<T> {
     return new Predicate(this.ctx, conjoin(this.condition, condition));
   }
 
+  /** Either may hold. */
   or(condition: ConditionLike<T>): Predicate<T> {
     return new Predicate(this.ctx, disjoin(this.condition, condition));
   }
 
+  /** Holds only if the exception does not: `a.unless(b)` is `a and not b`. */
   unless(condition: ConditionLike<T>): Predicate<T> {
     return new Predicate(this.ctx, without(this.condition, condition));
   }
@@ -98,11 +105,13 @@ export class Predicate<T> implements PromiseLike<Judgment<boolean>> {
     return new Branch(this, action, undefined);
   }
 
+  /** What would be sent, without sending it. */
   plan(): Plan {
     const { probe } = prepare(this.ctx, this.condition);
     return planFor(this.ctx.runtime, [probe]);
   }
 
+  /** Judge the condition. Equivalent to awaiting the predicate. */
   run(): Promise<Judgment<boolean>> {
     return judge(this.ctx, this.condition);
   }
@@ -154,6 +163,7 @@ export class Branch<T, R, HasOtherwise extends boolean> {
   }
 }
 
+/** A branch with all three outcomes handled. Awaiting it runs the predicate and exactly one handler. */
 export class ReadyBranch<T, R> implements PromiseLike<Decision<Awaited<R>>> {
   constructor(
     private readonly predicate: Predicate<T>,
@@ -162,10 +172,12 @@ export class ReadyBranch<T, R> implements PromiseLike<Decision<Awaited<R>>> {
     private readonly onUncertain: Action<T, unknown>,
   ) {}
 
+  /** What would be sent, without sending it. Handlers do not run. */
   plan(): Plan {
     return this.predicate.plan();
   }
 
+  /** Judge the condition, then run the matching handler. Equivalent to awaiting the branch. */
   async run(): Promise<Decision<Awaited<R>>> {
     const judgment = await this.predicate.run();
     const subject = this.predicate.subject;
@@ -206,6 +218,7 @@ export class ChooseCandidates<T, C> {
   }
 }
 
+/** `given(x).chooseFrom(candidates).by(...)` — a selection ready to run. Resolves to one of your own objects. */
 export class Choose<T, C, None> implements PromiseLike<Judgment<C | None>> {
   constructor(
     private readonly ctx: SubjectContext<T>,
@@ -217,10 +230,12 @@ export class Choose<T, C, None> implements PromiseLike<Judgment<C | None>> {
     return new Choose(this.ctx, this.selection.orNone(description));
   }
 
+  /** What would be sent, without sending it. */
   plan(): Plan {
     return planOne(this.ctx, this.selection);
   }
 
+  /** Ask for the choice. Equivalent to awaiting it. */
   async run(): Promise<Judgment<C | None>> {
     return askOne(this.ctx, this.selection);
   }

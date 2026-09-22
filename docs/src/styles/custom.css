@@ -1,0 +1,9 @@
+:root {
+  --sl-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sl-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Inline code in prose should read as part of the sentence, not shout. */
+.sl-markdown-content :not(pre) > code {
+  font-size: 0.9em;
+}

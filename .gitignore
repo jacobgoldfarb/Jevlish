@@ -3,3 +3,7 @@ dist/
 .env
 *.tsbuildinfo
 .DS_Store
+
+# docs site: Astro cache and the TypeDoc-generated reference
+docs/.astro/
+docs/src/content/docs/reference/

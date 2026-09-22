@@ -1,0 +1,45 @@
+---
+title: Install and configure
+description: Install jevlish, set an API key, and choose defaults for the shared runtime.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import configure from "@snippets/configure.ts?raw";
+
+```sh
+npm install jevlish
+export TYPESAFE_API_KEY=...
+```
+
+Node 20+. ESM only. The package ships its own type declarations.
+
+## The API key
+
+`given`, `from`, and `grade` share one runtime. On first use it reads `TYPESAFE_API_KEY` and creates a Jev client. Nothing is sent until an expression runs, so importing the package and building expressions costs nothing.
+
+If the key is missing when the first request goes out, the expression rejects with a `SenseError` that says so.
+
+## Defaults for the shared runtime
+
+`configure` replaces the shared runtime. Call it once, before the first expression runs.
+
+<Code lang="ts" code={configure} />
+
+Every field is optional:
+
+- `apiKey` instead of the environment variable. Ignored when `client` is given.
+- `model`, defaulting to the SDK's `jev-latest`.
+- `policy`: the thresholds that turn probabilities into decisions. The defaults are Noul yes at P(yes) ≥ 0.9 and no at ≤ 0.1, Choice and Score at confidence ≥ 0.5. See [Uncertainty and acceptance policy](/Jevlish/guides/uncertainty/).
+- `client`: your own transport, or a fake in tests. See [Testing](/Jevlish/guides/testing/).
+- `cache`, `concurrency`, `questionsPerRequest`: see [Runtime](/Jevlish/guides/runtime/).
+
+## More than one runtime
+
+`createSense(config)` builds a second, independent runtime and returns `given`, `from`, and `grade` bound to it. Use it when two parts of an application need different models, policies, or transports, or when a test should not touch the shared state.
+
+```ts
+import { createSense } from "jevlish";
+
+const strict = createSense({ policy: { noul: { yesAbove: 0.95, noBelow: 0.05 } } });
+const judgment = await strict.given(ticket).when(blocked);
+```

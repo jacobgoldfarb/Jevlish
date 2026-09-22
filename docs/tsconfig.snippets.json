@@ -1,0 +1,15 @@
+{
+  // Every code sample on the site is a real module, typechecked against the
+  // library source so a stale sample fails the build.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "paths": {
+      "jevlish": ["../src/index.ts"]
+    }
+  },
+  "include": ["snippets"]
+}

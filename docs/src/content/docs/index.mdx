@@ -1,0 +1,43 @@
+---
+title: jevlish
+description: TypeScript expressions that compile to Jev requests.
+template: splash
+hero:
+  tagline: Write the mechanics in code. Write the judgments in prose.
+  actions:
+    - text: Quickstart
+      link: /Jevlish/start/quickstart/
+      icon: right-arrow
+    - text: GitHub
+      link: https://github.com/jacobgoldfarb/Jevlish
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, Code } from "@astrojs/starlight/components";
+import decision from "@snippets/hero-decision.ts?raw";
+import queue from "@snippets/hero-queue.ts?raw";
+
+<CardGrid>
+  <Card title="Judge one thing" icon="approve-check">
+    <Code lang="ts" code={decision} />
+  </Card>
+  <Card title="Filter and rank a list" icon="list-format">
+    <Code lang="ts" code={queue} />
+  </Card>
+</CardGrid>
+
+<CardGrid>
+  <Card title="Conditions, not prompts" icon="pencil">
+    A string in a condition is a Noul. A function is a predicate and runs locally, before anything is sent. `and`, `or`, and `unless` stay separate nodes and combine with three-valued logic.
+  </Card>
+  <Card title="Uncertainty never falls through" icon="warning">
+    Every result is `decided` or `uncertain`. A branch cannot run until you say what happens when the model abstains.
+  </Card>
+  <Card title="Inspect before you spend" icon="magnifier">
+    `.plan()` returns the requests that would be sent, including how many subjects code already settled, without sending anything.
+  </Card>
+  <Card title="Test the vocabulary" icon="approve-check-circle">
+    `grade(meaning, fixtures)` reports accuracy, coverage, and abstentions separately from wrong answers.
+  </Card>
+</CardGrid>

@@ -2,6 +2,8 @@
 
 TypeScript expressions that compile to [Jev](https://docs.typesafe.ai) requests.
 
+Documentation: [jacobgoldfarb.github.io/Jevlish](https://jacobgoldfarb.github.io/Jevlish/)
+
 A string in a condition is a Noul. A function is a predicate and runs locally, before anything is sent. `and`, `or`, and `unless` stay separate nodes and combine with three-valued logic. `scale` is a Score. `chooseFrom` is a Choice over objects you pass in. `ask` sends several questions about one subject in one request.
 
 ```ts

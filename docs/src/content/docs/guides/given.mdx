@@ -1,0 +1,55 @@
+---
+title: Judging one thing
+description: given, seenAs, when/and/or/unless, do/otherwise/whenUncertain, and the Decision that comes back.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import branch from "@snippets/given-branch.ts?raw";
+import predicate from "@snippets/given-predicate.ts?raw";
+import missing from "@snippets/given-missing-uncertain.ts?raw";
+
+`given(subject)` starts an expression about one value. What follows says what to ask about it and what to do with the answer.
+
+## The subject and what the model sees
+
+`given(x)` holds the whole object. `.seenAs(fn)` projects it into the state the model sees. Code predicates, handlers, and the returned `Decision` still work with the whole object, so you can send `{ subject, body }` and still branch on `ticket.status` or read `ticket.id` in a handler.
+
+Without `.seenAs`, the subject is serialized as-is: strings stay strings, objects become JSON, dates become ISO strings, functions and `undefined` are dropped.
+
+## Stating the condition
+
+`.when(condition)` accepts three kinds of thing, and so do `.and()`, `.or()`, and `.unless()`:
+
+- A **string** is a proposition the model judges. It becomes a Noul question.
+- A **function** `(subject) => boolean` is a code predicate. It runs locally, before anything is sent.
+- A **meaning** from `means(...)` is a reusable, named proposition with its boundary drawn. See [Meanings](/Jevlish/guides/meanings/).
+
+`.and`, `.or`, and `.unless` build an expression tree. They do not rewrite prose. `a.unless(b)` is `a and not b`. The tree is evaluated with three-valued logic: `false and uncertain` is `false`, `true or uncertain` is `true`, and `not uncertain` is `uncertain`. A false code predicate under `and` therefore settles the whole expression, and no request is sent.
+
+## Awaiting a predicate
+
+A predicate on its own resolves to a `Judgment<boolean>`: either `{ status: "decided", value, evidence }` or `{ status: "uncertain", evidence }`.
+
+<Code lang="ts" code={predicate} />
+
+## Branching
+
+`.do(handler)` runs when the condition is true. `.otherwise(handler)` runs when it is false. `.whenUncertain(handler)` runs when the policy would not decide. Each handler receives the whole subject and the judgment that selected it, and may be async.
+
+<Code lang="ts" code={branch} />
+
+Awaiting the branch returns a `Decision`:
+
+- `branch` is `"do"`, `"otherwise"`, or `"uncertain"`.
+- `result` is whatever the handler returned. Its type is the union of the handlers' return types. Without `.otherwise()`, `undefined` joins the union.
+- `judgment` is the `Judgment<boolean>` that chose the branch, with its evidence.
+
+## Uncertainty never falls through
+
+A branch without `.whenUncertain()` cannot run. Awaiting one rejects with a `SenseError`, and its fulfilled type is `never` so the omission also shows in the editor. This is deliberate: an abstaining model is not a "no", and the code has to say what happens in that case.
+
+<Code lang="ts" code={missing} />
+
+## Other verbs on a subject
+
+`given(x)` also starts `.measure(scale)`, `.chooseFrom(candidates)`, and `.ask({ ... })`. They are covered in [Scales](/Jevlish/guides/scales/), [Choosing](/Jevlish/guides/choosing/), and [Asking several questions](/Jevlish/guides/ask/). `.withPolicy({...})` overrides the acceptance thresholds for this one expression; see [Uncertainty](/Jevlish/guides/uncertainty/).

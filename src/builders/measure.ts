@@ -11,10 +11,12 @@ export class Measure<T> implements PromiseLike<Judgment<Measurement>> {
     private readonly scale: Scale<T>,
   ) {}
 
+  /** What would be sent, without sending it. */
   plan(): Plan {
     return planOne(this.ctx, this.scale);
   }
 
+  /** Ask for the measurement. Equivalent to awaiting it. */
   async run(): Promise<Judgment<Measurement>> {
     return askOne(this.ctx, this.scale);
   }

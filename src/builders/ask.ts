@@ -127,11 +127,13 @@ export class Ask<T, Q extends Record<string, Askable<T>>> implements PromiseLike
     if (Object.keys(questions).length === 0) throw new SenseError("ask() needs at least one question.");
   }
 
+  /** What would be sent, without sending it. */
   plan(): Plan {
     const { probe } = this.prepare();
     return planFor(this.ctx.runtime, [probe]);
   }
 
+  /** Ask every question in one request and read each answer under the policy. Equivalent to awaiting. */
   async run(): Promise<Asked<T, Q>> {
     const { log, probe, readers } = this.prepare();
     const answers = probe.needsInference ? await this.ctx.runtime.ask(probe.state, probe.questions, log) : {};

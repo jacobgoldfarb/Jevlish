@@ -8,8 +8,10 @@ import { type Bound, Probe, type ScoreReading } from "../runtime/probe.js";
 import type { Runtime } from "../runtime/runtime.js";
 import { type Projection, contextFor } from "./subject.js";
 
+/** Sort direction for `rankedBy`. */
 export type RankOrder = "highest first" | "lowest first";
 
+/** `from(items).where(...)` — every item lands in exactly one bucket. */
 export interface QueryResult<T> {
   /** Items the condition resolved to true, in ranked order when a scale was given, otherwise in input order. */
   readonly accepted: readonly T[];
@@ -41,16 +43,19 @@ export class From<T> {
     return new From(this.runtime, this.items, projection, this.policy);
   }
 
+  /** Override acceptance thresholds for this query. */
   withPolicy(policy: PartialPolicy): From<T> {
     return new From(this.runtime, this.items, this.projection, policy);
   }
 
+  /** Keep the items for which the condition holds. Refine with `.and()`, `.or()`, `.unless()`. */
   where(condition: ConditionLike<T>): Query<T> {
     return new Query(this.runtime, this.items, this.projection, this.resolvedPolicy(), {
       condition: toCondition(condition),
     });
   }
 
+  /** Score every item on the scale and order by it, with no filter. */
   rankedBy(scale: Scale<T>, order: RankOrder = "highest first"): Query<T, true> {
     return new Query<T, true>(this.runtime, this.items, this.projection, this.resolvedPolicy(), {
       ranking: { scale: scale as Scale<unknown>, order },
@@ -102,16 +107,19 @@ export class Query<T, Ranked extends boolean = false> implements PromiseLike<Run
     private readonly state: QueryState<T> = {},
   ) {}
 
+  /** Both must hold. A false code predicate drops the item without a request. */
   and(condition: ConditionLike<T>): Query<T, Ranked> {
     if (!this.state.condition) throw new SenseError(".and() needs a preceding .where().");
     return this.copy({ condition: conjoin(this.state.condition, condition) });
   }
 
+  /** Either may hold. */
   or(condition: ConditionLike<T>): Query<T, Ranked> {
     if (!this.state.condition) throw new SenseError(".or() needs a preceding .where().");
     return this.copy({ condition: disjoin(this.state.condition, condition) });
   }
 
+  /** Holds only if the exception does not: `where(a).unless(b)` keeps items where `a and not b`. */
   unless(condition: ConditionLike<T>): Query<T, Ranked> {
     if (!this.state.condition) throw new SenseError(".unless() needs a preceding .where().");
     return this.copy({ condition: without(this.state.condition, condition) });
@@ -125,17 +133,20 @@ export class Query<T, Ranked extends boolean = false> implements PromiseLike<Run
     });
   }
 
+  /** Keep at most `count` accepted items, after ranking. Runs locally; every item is still judged. */
   take(count: number): Query<T, Ranked> {
     if (!Number.isInteger(count) || count < 0) throw new SenseError("take() needs a non-negative integer.");
     return this.copy({ limit: count });
   }
 
+  /** What would be sent, without sending it. Includes how many items code alone settled. */
   plan(): Plan {
     const log = new EvidenceLog(this.policy);
     const probes = this.items.map((item) => this.prepare(item, log).probe);
     return planFor(this.runtime, probes as Probe<unknown>[], this.notes());
   }
 
+  /** Judge every item, then partition, sort, and limit. Equivalent to awaiting the query. */
   async run(): Promise<RunResult<T, Ranked>> {
     const log = new EvidenceLog(this.policy);
     const prepared = this.items.map((item) => this.prepare(item, log));

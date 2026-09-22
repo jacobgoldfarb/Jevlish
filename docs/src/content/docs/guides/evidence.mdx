@@ -1,0 +1,45 @@
+---
+title: Evidence and tracing
+description: Judgment, Evidence, the four kinds of JudgmentRecord, and what each request cost.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import evidence from "@snippets/evidence.ts?raw";
+
+Every result carries the evidence behind it: the requests that left the process, what came back, how each answer was read, and the policy that read it. Nothing has to be re-run to explain a decision.
+
+## Judgment
+
+`Judgment<T>` is the fundamental return type:
+
+```ts
+type Judgment<T> =
+  | { status: "decided"; value: T; evidence: Evidence }
+  | { status: "uncertain"; evidence: Evidence };
+```
+
+"Decided" means the answer passed the acceptance policy, not that it is a proven fact. `isDecided(judgment)` is a type guard; `truthOfJudgment(judgment)` collapses a boolean judgment back to `true | false | "uncertain"`.
+
+## Evidence
+
+<Code lang="ts" code={evidence} />
+
+`evidence.judgments` records every judgment that contributed, in one of four shapes:
+
+- `code`: a predicate that ran locally, with its `label` and boolean `truth`. Recorded alongside model answers so the trace shows the whole decision, not only the part that involved inference.
+- `noul`: a proposition, with the `instructions` sent, the `probability` of yes, and the `truth` the policy assigned.
+- `choice`: a selection, with the chosen option, `confidence`, the full `probabilities`, and whether it was `accepted`.
+- `score`: a measurement, with the `score`, `confidence`, `probabilities`, and `accepted`.
+
+`evidence.requests` records each request: the `state` the model saw, the `questions`, the `answers`, token `usage`, and whether the response was `cached`. Summing `usage.input_tokens` over a query's requests is what it cost.
+
+`evidence.policy` is the policy in force, after any `withPolicy` override.
+
+## Where evidence comes from
+
+- A predicate or branch: `judgment.evidence`, or `decision.judgment.evidence`.
+- A query: `result.evidence`, covering every item.
+- `ask`: every answer shares one `evidence` object.
+- `grade`: each `misjudged` and `abstained` entry carries its fixture's judgment, so a wrong answer can be traced to its probability.
+
+The sample apps' `npm run trace` commands are nothing more than printing this structure. See the [Support desk example](/Jevlish/examples/support-desk/).

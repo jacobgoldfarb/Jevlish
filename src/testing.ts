@@ -11,6 +11,7 @@ export interface Fixture<T> {
   readonly note?: string;
 }
 
+/** How a meaning did against fixtures. Abstentions are counted apart from wrong answers. */
 export interface GradeReport<T> {
   readonly total: number;
   readonly decided: number;
@@ -27,9 +28,11 @@ export interface GradeReport<T> {
   readonly abstained: ReadonlyArray<{ readonly fixture: Fixture<T>; readonly judgment: Judgment<boolean> }>;
 }
 
+/** Options for `grade`. */
 export interface GradeOptions<T> {
   /** What the model sees of each fixture's subject. */
   readonly seenAs?: Projection<T>;
+  /** Thresholds for this grading run, layered on the runtime's policy. */
   readonly policy?: PartialPolicy;
 }
 
