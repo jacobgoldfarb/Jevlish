@@ -1,11 +1,12 @@
 # jevlish
 
-**Write the mechanics in code. Write the judgments in prose.**
+**A frontend for [Jev](https://docs.typesafe.ai).**
 
-A small semantic expression language embedded in TypeScript, compiled to
-[Jev](https://docs.typesafe.ai) through `@typesafe-ai/sdk`. Where you would
-normally write a predicate, a selection criterion, or a relationship, you can
-write what you mean — and it composes with ordinary code.
+Write the mechanics in code. Write the judgments in prose. jevlish is a small
+semantic expression language embedded in TypeScript, compiled to Jev through
+`@typesafe-ai/sdk`. Where you would normally write a predicate, a selection
+criterion, or a relationship, you can write what you mean — and it composes
+with ordinary code.
 
 ```ts
 import { from, means } from "jevlish";
@@ -156,6 +157,31 @@ time. `orNone` is a legitimate outcome (`decided(null)`); it is distinct from
 
 `given(x).measure(scale)` places one subject on a scale.
 
+### Several judgments, one request
+
+Jev evaluates every question in a request independently against the same
+state, so asking twelve things costs about the same as asking one. `ask()` is
+how you say that:
+
+```ts
+import { chooseFrom, given } from "jevlish";
+
+const profile = await given(feedback)
+  .describedBy((f) => ({ text: f.text }))
+  .ask({
+    problem: describesProblem,                       // Judgment<boolean>
+    churnRisk: "the user says they will leave",      // Judgment<boolean>
+    paying: (f) => f.plan !== "free",                // code; costs nothing
+    severity,                                        // Judgment<Measurement>
+    area: chooseFrom(AREAS).by("which part of the product this is about").orNone("none"),
+  })                                                 // Judgment<Area | null>
+  .run();
+```
+
+Each key is typed by what you asked. All answers share one evidence trail.
+Ask speculatively — the severity of a message that turns out not to be a
+problem is a few tokens — and let code decide which answers matter.
+
 ## Uncertainty is in the language
 
 ```ts
@@ -216,7 +242,7 @@ the model sees; code predicates still receive the whole object.
 **Test meanings like functions.**
 
 ```ts
-const report = await sense.measure(blocked, fixtures, { describedBy: (t) => ({ body: t.body }) });
+const report = await sense.grade(blocked, fixtures, { describedBy: (t) => ({ body: t.body }) });
 report.accuracy;        // over decided fixtures
 report.coverage;        // decided / total
 report.falsePositives; report.falseNegatives; report.abstentions;
@@ -242,6 +268,7 @@ means.
 | `and`, `or`, `unless`, `not` | Expression nodes, combined with three-valued logic after answers arrive |
 | `scale(...).from().through().to()` | Score question with descriptive levels |
 | `chooseFrom().by().orNone()` | Choice over explicit option ids, resolved back to your object |
+| `ask({ ... })` | All of the above for one subject, batched into one request |
 | `rankedBy`, `take` | Local sort and slice over evaluated results |
 | `do`, `otherwise`, `whenUncertain` | Callback selection |
 
@@ -265,9 +292,9 @@ const sense = createSense({
   cache,
 });
 
-sense.given(...); sense.from(...); sense.measure(...);
+sense.given(...); sense.from(...); sense.grade(...);
 
-configure({ ... });      // configures the bare `given`/`from`/`measure` exports
+configure({ ... });      // configures the bare `given`/`from`/`grade` exports
 ```
 
 ## What this is not
@@ -287,11 +314,16 @@ configure({ ... });      // configures the bare `given`/`from`/`measure` exports
 
 ```sh
 cp .env.example .env   # add your key
-npm run example        # given/when/do, plan, from/where/rankedBy, chooseFrom, measure
+npm run example        # given/when/do, plan, from/where/rankedBy, chooseFrom, grade
 ```
 
-`apps/support-desk` is a fuller sample application built on the published
-package surface.
+Two sample applications are built on the published package surface:
+
+- `apps/insights` — mine user feedback for product insights. One `ask()` per
+  message; every number in the report is a count of judgments, every quote a
+  user's own words.
+- `apps/support-desk` — triage a support inbox: escalation policy, priority
+  queue, incident linking, owner suggestion.
 
 ## Development
 

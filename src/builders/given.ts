@@ -1,16 +1,14 @@
-import type { ChoiceCriteria, EntryType } from "@typesafe-ai/sdk";
-import { SenseError } from "../errors.js";
-import { type Condition, type ConditionLike, toCondition } from "../expressions/condition.js";
+import type { EntryType } from "@typesafe-ai/sdk";
+import { type Condition, type ConditionLike, conjoin, disjoin, toCondition, without } from "../expressions/condition.js";
 import type { Scale } from "../expressions/scale.js";
-import { type Judgment, EvidenceLog, decided, uncertain } from "../judgment.js";
+import { type Candidates, type Selection, chooseFrom as chooseAmong } from "../expressions/selection.js";
+import type { Judgment } from "../judgment.js";
 import { type PartialPolicy, resolvePolicy } from "../policy.js";
 import { type Plan, planFor } from "../runtime/plan.js";
-import { Probe, type ScoreReading } from "../runtime/probe.js";
 import type { Runtime } from "../runtime/runtime.js";
-import { toState } from "../state.js";
+import { Ask, type Askable, askOne, planOne } from "./ask.js";
+import { Measure } from "./measure.js";
 import { type Projection, type SubjectContext, contextFor, judge, prepare } from "./subject.js";
-
-const MAX_CHOICE_OPTIONS = 255;
 
 /** A callback chosen by a judgment. It receives the subject and the judgment that selected it. */
 export type Handler<T, R> = (subject: T, judgment: Judgment<boolean>) => R | Promise<R>;
@@ -48,12 +46,17 @@ export class Given<T> {
 
   /** Select one of your own objects, by prose. */
   chooseFrom<C>(candidates: readonly C[]): ChooseCandidates<T, C> {
-    return new ChooseCandidates(this.context(), candidates, undefined);
+    return new ChooseCandidates(this.context(), chooseAmong(candidates));
   }
 
   /** Place the subject on a scale. */
   measure(scale: Scale<T>): Measure<T> {
-    return new Measure(this.context(), scale as Scale<unknown>);
+    return new Measure(this.context(), scale);
+  }
+
+  /** Several independent judgments about this subject, in one request. */
+  ask<const Q extends Record<string, Askable<T>>>(questions: Q): Ask<T, Q> {
+    return new Ask(this.context(), questions);
   }
 
   private context(): SubjectContext<T> {
@@ -78,19 +81,15 @@ export class Predicate<T> {
   }
 
   and(condition: ConditionLike<T>): Predicate<T> {
-    return new Predicate(this.ctx, { type: "and", left: this.condition, right: toCondition(condition) });
+    return new Predicate(this.ctx, conjoin(this.condition, condition));
   }
 
   or(condition: ConditionLike<T>): Predicate<T> {
-    return new Predicate(this.ctx, { type: "or", left: this.condition, right: toCondition(condition) });
+    return new Predicate(this.ctx, disjoin(this.condition, condition));
   }
 
   unless(condition: ConditionLike<T>): Predicate<T> {
-    return new Predicate(this.ctx, {
-      type: "and",
-      left: this.condition,
-      right: { type: "not", inner: toCondition(condition) },
-    });
+    return new Predicate(this.ctx, without(this.condition, condition));
   }
 
   /** Runs when the condition resolves to true. Uncertainty must be handled before `.run()`. */
@@ -163,108 +162,40 @@ export class ReadyBranch<T, R> {
 export class ChooseCandidates<T, C> {
   constructor(
     private readonly ctx: SubjectContext<T>,
-    private readonly candidates: readonly C[],
-    private readonly describe: Projection<C> | undefined,
+    private readonly candidates: Candidates<C>,
   ) {}
 
   /** Send only these fields of each candidate. */
   describedBy(projection: Projection<C>): ChooseCandidates<T, C> {
-    return new ChooseCandidates(this.ctx, this.candidates, projection);
+    return new ChooseCandidates(this.ctx, this.candidates.describedBy(projection));
   }
 
   /** The selection criterion, in prose. */
   by(criterion: string): Choose<T, C, never> {
-    const trimmed = criterion.trim();
-    if (!trimmed) throw new SenseError("chooseFrom(...).by() needs a non-empty criterion.");
-    return new Choose(this.ctx, this.candidates, this.describe, trimmed, undefined);
+    return new Choose(this.ctx, this.candidates.by(criterion));
   }
 }
 
 export class Choose<T, C, None> {
   constructor(
     private readonly ctx: SubjectContext<T>,
-    private readonly candidates: readonly C[],
-    private readonly describe: Projection<C> | undefined,
-    private readonly criterion: string,
-    private readonly noneDescription: EntryType | undefined,
+    private readonly selection: Selection<C, None>,
   ) {}
 
   describedBy(projection: Projection<C>): Choose<T, C, None> {
-    return new Choose(this.ctx, this.candidates, projection, this.criterion, this.noneDescription);
+    return new Choose(this.ctx, this.selection.describedBy(projection));
   }
 
   /** Make "none of them" a legitimate, distinct outcome. Separate from uncertainty. */
   orNone(description: EntryType): Choose<T, C, null> {
-    return new Choose(this.ctx, this.candidates, this.describe, this.criterion, description);
+    return new Choose(this.ctx, this.selection.orNone(description));
   }
 
   plan(): Plan {
-    const { probe } = this.prepare();
-    return planFor(this.ctx.runtime, [probe]);
+    return planOne(this.ctx, this.selection);
   }
 
   async run(): Promise<Judgment<C | None>> {
-    const { log, probe, id, byOption } = this.prepare();
-    const answers = await this.ctx.runtime.ask(probe.state, probe.questions, log);
-    const reading = probe.readChoice(id, this.criterion, answers, this.ctx.policy);
-    if (!reading.accepted) return uncertain(log.toEvidence());
-    if (reading.choice === NONE_OPTION) return decided(null as None, log.toEvidence());
-    const selected = byOption.get(reading.choice);
-    if (selected === undefined) throw new SenseError(`Model selected unknown option "${reading.choice}".`);
-    return decided<C | None>(selected, log.toEvidence());
-  }
-
-  private prepare() {
-    if (this.candidates.length === 0) throw new SenseError("chooseFrom() needs at least one candidate.");
-    const limit = this.noneDescription === undefined ? MAX_CHOICE_OPTIONS : MAX_CHOICE_OPTIONS - 1;
-    if (this.candidates.length > limit) {
-      throw new SenseError(
-        `chooseFrom() supports at most ${limit} candidates here (got ${this.candidates.length}). ` +
-          "Narrow the candidates in code first.",
-      );
-    }
-    const log = new EvidenceLog(this.ctx.policy);
-    const probe = new Probe(this.ctx.subject, this.ctx.state, log);
-    const byOption = new Map<string, C>();
-    const criteria: ChoiceCriteria = {};
-    this.candidates.forEach((candidate, index) => {
-      const option = `option_${index + 1}`;
-      byOption.set(option, candidate);
-      criteria[option] = toState(this.describe ? this.describe(candidate) : candidate);
-    });
-    if (this.noneDescription !== undefined) criteria[NONE_OPTION] = this.noneDescription;
-    const id = probe.addChoice(this.criterion, criteria);
-    return { log, probe, id, byOption };
-  }
-}
-
-const NONE_OPTION = "none_of_these";
-
-export type Measurement = ScoreReading;
-
-/** `given(x).measure(scale)` — where does the subject sit on the scale? */
-export class Measure<T> {
-  constructor(
-    private readonly ctx: SubjectContext<T>,
-    private readonly scale: Scale<unknown>,
-  ) {}
-
-  plan(): Plan {
-    const { probe } = this.prepare();
-    return planFor(this.ctx.runtime, [probe]);
-  }
-
-  async run(): Promise<Judgment<Measurement>> {
-    const { log, probe, id } = this.prepare();
-    const answers = await this.ctx.runtime.ask(probe.state, probe.questions, log);
-    const reading = probe.readScore(id, this.scale, answers, this.ctx.policy);
-    return reading.accepted ? decided(reading, log.toEvidence()) : uncertain(log.toEvidence());
-  }
-
-  private prepare() {
-    const log = new EvidenceLog(this.ctx.policy);
-    const probe = new Probe(this.ctx.subject, this.ctx.state, log);
-    const id = probe.addScore(this.scale);
-    return { log, probe, id };
+    return askOne(this.ctx, this.selection);
   }
 }

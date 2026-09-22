@@ -1,13 +1,12 @@
 import { SenseError } from "../errors.js";
-import { type Condition, type ConditionLike, describeCondition, toCondition } from "../expressions/condition.js";
+import { type Condition, type ConditionLike, conjoin, describeCondition, disjoin, toCondition, without } from "../expressions/condition.js";
 import type { Scale } from "../expressions/scale.js";
 import { type Evidence, EvidenceLog, type Truth } from "../judgment.js";
 import { type AcceptancePolicy, type PartialPolicy, resolvePolicy } from "../policy.js";
 import { type Plan, planFor } from "../runtime/plan.js";
-import { type Bound, Probe } from "../runtime/probe.js";
+import { type Bound, Probe, type ScoreReading } from "../runtime/probe.js";
 import type { Runtime } from "../runtime/runtime.js";
-import { toState } from "../state.js";
-import type { Projection } from "./subject.js";
+import { type Projection, contextFor } from "./subject.js";
 
 export type RankOrder = "highest first" | "lowest first";
 
@@ -18,10 +17,15 @@ export interface QueryResult<T> {
   readonly uncertain: readonly T[];
   /** Items the condition resolved to false. */
   readonly rejected: readonly T[];
-  /** Accepted items with their scale position, when ranked. */
-  readonly scored?: ReadonlyArray<{ readonly item: T; readonly score: number; readonly normalized: number }>;
   readonly evidence: Evidence;
 }
+
+/** `from(items).rankedBy(...)` — the same buckets, plus each accepted item's place on the scale. */
+export interface RankedQueryResult<T> extends QueryResult<T> {
+  readonly scored: ReadonlyArray<{ readonly item: T; readonly score: number; readonly normalized: number }>;
+}
+
+type RunResult<T, Ranked extends boolean> = Ranked extends true ? RankedQueryResult<T> : QueryResult<T>;
 
 /** Entry point: `from(items)`. */
 export class From<T> {
@@ -42,13 +46,14 @@ export class From<T> {
   }
 
   where(condition: ConditionLike<T>): Query<T> {
-    return new Query(this.runtime, this.items, this.projection, this.resolvedPolicy(), toCondition(condition));
+    return new Query(this.runtime, this.items, this.projection, this.resolvedPolicy(), {
+      condition: toCondition(condition),
+    });
   }
 
-  rankedBy(scale: Scale<T>, order: RankOrder = "highest first"): Query<T> {
-    return new Query(this.runtime, this.items, this.projection, this.resolvedPolicy(), undefined, {
-      scale: scale as Scale<unknown>,
-      order,
+  rankedBy(scale: Scale<T>, order: RankOrder = "highest first"): Query<T, true> {
+    return new Query<T, true>(this.runtime, this.items, this.projection, this.resolvedPolicy(), {
+      ranking: { scale: scale as Scale<unknown>, order },
     });
   }
 
@@ -62,6 +67,12 @@ interface Ranking {
   readonly order: RankOrder;
 }
 
+interface QueryState<T> {
+  readonly condition?: Condition<T>;
+  readonly ranking?: Ranking;
+  readonly limit?: number;
+}
+
 interface ItemProbe<T> {
   readonly item: T;
   readonly probe: Probe<T>;
@@ -69,47 +80,54 @@ interface ItemProbe<T> {
   readonly scoreId: string | undefined;
 }
 
+interface ItemVerdict<T> {
+  readonly item: T;
+  readonly truth: Truth;
+  readonly score?: ScoreReading;
+}
+
+interface Partitioned<T> {
+  readonly accepted: ItemVerdict<T>[];
+  readonly uncertain: readonly T[];
+  readonly rejected: readonly T[];
+}
+
 /** `from(items).where(...)` — filter, rank, and limit. The model judges; the runtime sorts. */
-export class Query<T> {
+export class Query<T, Ranked extends boolean = false> {
   constructor(
     private readonly runtime: Runtime,
     private readonly items: readonly T[],
     private readonly projection: Projection<T> | undefined,
     private readonly policy: AcceptancePolicy,
-    private readonly condition: Condition<T> | undefined,
-    private readonly ranking: Ranking | undefined = undefined,
-    private readonly limit: number | undefined = undefined,
+    private readonly state: QueryState<T> = {},
   ) {}
 
-  and(condition: ConditionLike<T>): Query<T> {
-    return this.withCondition(
-      this.condition
-        ? { type: "and", left: this.condition, right: toCondition(condition) }
-        : toCondition(condition),
-    );
+  and(condition: ConditionLike<T>): Query<T, Ranked> {
+    if (!this.state.condition) throw new SenseError(".and() needs a preceding .where().");
+    return this.copy({ condition: conjoin(this.state.condition, condition) });
   }
 
-  or(condition: ConditionLike<T>): Query<T> {
-    if (!this.condition) throw new SenseError(".or() needs a preceding .where().");
-    return this.withCondition({ type: "or", left: this.condition, right: toCondition(condition) });
+  or(condition: ConditionLike<T>): Query<T, Ranked> {
+    if (!this.state.condition) throw new SenseError(".or() needs a preceding .where().");
+    return this.copy({ condition: disjoin(this.state.condition, condition) });
   }
 
-  unless(condition: ConditionLike<T>): Query<T> {
-    const negated: Condition<T> = { type: "not", inner: toCondition(condition) };
-    return this.withCondition(this.condition ? { type: "and", left: this.condition, right: negated } : negated);
+  unless(condition: ConditionLike<T>): Query<T, Ranked> {
+    if (!this.state.condition) throw new SenseError(".unless() needs a preceding .where().");
+    return this.copy({ condition: without(this.state.condition, condition) });
   }
 
   /** Each accepted item is scored once; ordering is then an ordinary sort. */
-  rankedBy(scale: Scale<T>, order: RankOrder = "highest first"): Query<T> {
-    return new Query(this.runtime, this.items, this.projection, this.policy, this.condition, {
-      scale: scale as Scale<unknown>,
-      order,
-    }, this.limit);
+  rankedBy(scale: Scale<T>, order: RankOrder = "highest first"): Query<T, true> {
+    return new Query<T, true>(this.runtime, this.items, this.projection, this.policy, {
+      ...this.state,
+      ranking: { scale: scale as Scale<unknown>, order },
+    });
   }
 
-  take(count: number): Query<T> {
+  take(count: number): Query<T, Ranked> {
     if (!Number.isInteger(count) || count < 0) throw new SenseError("take() needs a non-negative integer.");
-    return new Query(this.runtime, this.items, this.projection, this.policy, this.condition, this.ranking, count);
+    return this.copy({ limit: count });
   }
 
   plan(): Plan {
@@ -118,67 +136,83 @@ export class Query<T> {
     return planFor(this.runtime, probes as Probe<unknown>[], this.notes());
   }
 
-  async run(): Promise<QueryResult<T>> {
+  async run(): Promise<RunResult<T, Ranked>> {
     const log = new EvidenceLog(this.policy);
     const prepared = this.items.map((item) => this.prepare(item, log));
+    const verdicts = await Promise.all(prepared.map((entry) => this.judgeItem(entry, log)));
+    return this.toResult(orderByScale(partition(verdicts), this.state.ranking), log);
+  }
 
-    const outcomes = await Promise.all(
-      prepared.map(async ({ item, probe, bound, scoreId }) => {
-        const answers = probe.needsInference ? await this.runtime.ask(probe.state, probe.questions, log) : {};
-        const truth: Truth = bound ? probe.resolve(bound, answers, this.policy) : true;
-        if (truth !== true) return { item, truth, score: undefined };
-        if (!scoreId || !this.ranking) return { item, truth, score: undefined };
-        const reading = probe.readScore(scoreId, this.ranking.scale, answers, this.policy);
-        return reading.accepted
-          ? { item, truth, score: reading }
-          : { item, truth: "uncertain" as Truth, score: undefined };
-      }),
-    );
-
-    const accepted = outcomes.filter((outcome) => outcome.truth === true);
-    const uncertain = outcomes.filter((outcome) => outcome.truth === "uncertain").map((outcome) => outcome.item);
-    const rejected = outcomes.filter((outcome) => outcome.truth === false).map((outcome) => outcome.item);
-
-    if (this.ranking) {
-      const direction = this.ranking.order === "highest first" ? -1 : 1;
-      accepted.sort((a, b) => direction * ((a.score?.score ?? 0) - (b.score?.score ?? 0)));
-    }
-    const limited = this.limit === undefined ? accepted : accepted.slice(0, this.limit);
-
-    return {
-      items: limited.map((outcome) => outcome.item),
-      uncertain,
-      rejected,
-      ...(this.ranking
-        ? {
-            scored: limited.map((outcome) => ({
-              item: outcome.item,
-              score: outcome.score?.score ?? 0,
-              normalized: outcome.score?.normalized ?? 0,
-            })),
-          }
-        : {}),
-      evidence: log.toEvidence(),
-    };
+  private async judgeItem(entry: ItemProbe<T>, log: EvidenceLog): Promise<ItemVerdict<T>> {
+    const answers = entry.probe.needsInference ? await this.runtime.ask(entry.probe.state, entry.probe.questions, log) : {};
+    const truth: Truth = entry.bound ? entry.probe.resolve(entry.bound, answers, this.policy) : true;
+    if (truth !== true) return { item: entry.item, truth };
+    if (!this.state.ranking || !entry.scoreId) return { item: entry.item, truth };
+    const reading = entry.probe.readScore(entry.scoreId, this.state.ranking.scale, answers, this.policy);
+    if (!reading.accepted) return { item: entry.item, truth: "uncertain" };
+    return { item: entry.item, truth, score: reading };
   }
 
   private prepare(item: T, log: EvidenceLog): ItemProbe<T> {
-    const probe = new Probe(item, toState(this.projection ? this.projection(item) : item), log);
-    const bound = this.condition ? probe.bind(this.condition) : undefined;
+    const ctx = contextFor(this.runtime, item, this.projection, this.policy);
+    const probe = new Probe(ctx.subject, ctx.state, log);
+    const bound = this.state.condition ? probe.bind(this.state.condition) : undefined;
     const filteredOutByCode = bound?.reduced.type === "const" && bound.reduced.value === false;
-    const scoreId = this.ranking && !filteredOutByCode ? probe.addScore(this.ranking.scale) : undefined;
+    const scoreId = this.state.ranking && !filteredOutByCode ? probe.addScore(this.state.ranking.scale) : undefined;
     return { item, probe, bound, scoreId };
   }
 
-  private withCondition(condition: Condition<T>): Query<T> {
-    return new Query(this.runtime, this.items, this.projection, this.policy, condition, this.ranking, this.limit);
+  private copy(patch: Partial<QueryState<T>>): Query<T, Ranked> {
+    return new Query<T, Ranked>(this.runtime, this.items, this.projection, this.policy, { ...this.state, ...patch });
+  }
+
+  private toResult(groups: Partitioned<T>, log: EvidenceLog): RunResult<T, Ranked> {
+    const limited = this.state.limit === undefined ? groups.accepted : groups.accepted.slice(0, this.state.limit);
+    const result: QueryResult<T> = {
+      items: limited.map((verdict) => verdict.item),
+      uncertain: groups.uncertain,
+      rejected: groups.rejected,
+      evidence: log.toEvidence(),
+    };
+    if (!this.state.ranking) return result as RunResult<T, Ranked>;
+    const ranked: RankedQueryResult<T> = { ...result, scored: limited.map((verdict) => placed(verdict)) };
+    return ranked as RunResult<T, Ranked>;
   }
 
   private notes(): string[] {
     const notes: string[] = [];
-    if (this.condition) notes.push(`filter: ${describeCondition(this.condition)}`);
-    if (this.ranking) notes.push(`ranked by "${this.ranking.scale.question}", ${this.ranking.order}`);
-    if (this.limit !== undefined) notes.push(`take ${this.limit}`);
+    if (this.state.condition) notes.push(`filter: ${describeCondition(this.state.condition)}`);
+    if (this.state.ranking) notes.push(`ranked by "${this.state.ranking.scale.question}", ${this.state.ranking.order}`);
+    if (this.state.limit !== undefined) notes.push(`take ${this.state.limit}`);
     return notes;
   }
+}
+
+function partition<T>(verdicts: readonly ItemVerdict<T>[]): Partitioned<T> {
+  const accepted: ItemVerdict<T>[] = [];
+  const uncertain: T[] = [];
+  const rejected: T[] = [];
+  for (const verdict of verdicts) {
+    if (verdict.truth === true) accepted.push(verdict);
+    else if (verdict.truth === "uncertain") uncertain.push(verdict.item);
+    else rejected.push(verdict.item);
+  }
+  return { accepted, uncertain, rejected };
+}
+
+function orderByScale<T>(groups: Partitioned<T>, ranking: Ranking | undefined): Partitioned<T> {
+  if (!ranking) return groups;
+  const direction = ranking.order === "highest first" ? -1 : 1;
+  const accepted = [...groups.accepted].sort((a, b) => direction * (scoreOf(a) - scoreOf(b)));
+  return { ...groups, accepted };
+}
+
+function scoreOf<T>(verdict: ItemVerdict<T>): number {
+  if (!verdict.score) throw new SenseError("A ranked item is missing its score.");
+  return verdict.score.score;
+}
+
+function placed<T>(verdict: ItemVerdict<T>): { item: T; score: number; normalized: number } {
+  if (!verdict.score) throw new SenseError("A ranked item is missing its score.");
+  return { item: verdict.item, score: verdict.score.score, normalized: verdict.score.normalized };
 }

@@ -10,8 +10,8 @@
  * themselves) are code. The judgments are prose.
  */
 import { parseArgs } from "node:util";
-import { createSense, memoryCache, type Decision, type Evidence, type Plan } from "jevlish";
-import { type Ticket, engineers, incidents, tickets } from "./data.js";
+import { createSense, memoryCache, type Decision, type Evidence, type Judgment, type Plan, type RankedQueryResult } from "jevlish";
+import { type Engineer, type Incident, type Ticket, engineers, incidents, tickets } from "./data.js";
 import { blockedFixtures } from "./fixtures.js";
 import { blocked, disruption, needsAttention, reportsProblem } from "./vocabulary.js";
 
@@ -103,55 +103,106 @@ const chooseOwner = (ticket: Ticket) =>
 // Modes
 // ---------------------------------------------------------------------------
 
-async function runDesk(): Promise<void> {
-  const traces: Array<{ label: string; evidence: Evidence }> = [];
+interface DeskTrace {
+  readonly label: string;
+  readonly evidence: Evidence;
+}
 
-  heading("Escalation policy");
+interface DeskReport {
+  readonly escalations: ReadonlyArray<{
+    ticket: Ticket;
+    decision: Decision<"escalated" | "unchanged" | "review">;
+  }>;
+  readonly queue: RankedQueryResult<Ticket>;
+  readonly incidents: ReadonlyArray<{ ticket: Ticket; link: Judgment<Incident | null> }>;
+  readonly owners: ReadonlyArray<{ ticket: Ticket; owner: Judgment<Engineer | null> }>;
+  readonly traces: readonly DeskTrace[];
+}
+
+async function triage(): Promise<DeskReport> {
+  const traces: DeskTrace[] = [];
+  const escalations: DeskReport["escalations"][number][] = [];
   for (const ticket of tickets) {
-    const decision: Decision<"escalated" | "unchanged" | "review"> = await escalationPolicy(ticket).run();
+    const decision = await escalationPolicy(ticket).run();
     traces.push({ label: `escalation ${ticket.id}`, evidence: decision.judgment.evidence });
+    escalations.push({ ticket, decision });
+  }
+
+  const queue = await priorityQueue.run();
+  traces.push({ label: "priority queue", evidence: queue.evidence });
+
+  const incidents: DeskReport["incidents"][number][] = [];
+  for (const ticket of queue.items) {
+    const link = await linkIncident(ticket).run();
+    traces.push({ label: `incident ${ticket.id}`, evidence: link.evidence });
+    incidents.push({ ticket, link });
+  }
+
+  const owners: DeskReport["owners"][number][] = [];
+  for (const ticket of desk.escalated) {
+    const owner = await chooseOwner(ticket).run();
+    traces.push({ label: `owner ${ticket.id}`, evidence: owner.evidence });
+    owners.push({ ticket, owner });
+  }
+
+  return { escalations, queue, incidents, owners, traces };
+}
+
+function printDesk(report: DeskReport): void {
+  heading("Escalation policy");
+  for (const { ticket, decision } of report.escalations) {
     console.log(`  ${decision.result.padEnd(9)} ${show(ticket)} ${dim(probabilities(decision.judgment.evidence))}`);
   }
 
   heading("Priority queue (open, reports a problem, most disruptive first)");
-  const queue = await priorityQueue.run();
-  traces.push({ label: "priority queue", evidence: queue.evidence });
-  queue.scored?.forEach((entry, index) =>
+  report.queue.scored?.forEach((entry, index) =>
     console.log(`  ${index + 1}. ${show(entry.item)} ${dim(`disruption ${entry.score.toFixed(2)} / ${disruption.top}`)}`),
   );
-  if (queue.uncertain.length) console.log(`  ${dim("unresolved:")} ${queue.uncertain.map((t) => t.id).join(", ")}`);
+  if (report.queue.uncertain.length) {
+    console.log(`  ${dim("unresolved:")} ${report.queue.uncertain.map((ticket) => ticket.id).join(", ")}`);
+  }
 
   heading("Known incidents (open tickets in the queue)");
-  for (const ticket of queue.items) {
-    const link = await linkIncident(ticket).run();
-    traces.push({ label: `incident ${ticket.id}`, evidence: link.evidence });
-    const label = link.status === "uncertain" ? "uncertain" : link.value ? `${link.value.id} ${dim(link.value.title)}` : dim("no known incident");
-    console.log(`  ${ticket.id} ← ${label} ${dim(confidence(link.evidence))}`);
+  for (const { ticket, link } of report.incidents) {
+    console.log(`  ${ticket.id} ← ${incidentLabel(link)} ${dim(confidence(link.evidence))}`);
   }
 
   heading("Suggested owners for escalations");
-  for (const ticket of desk.escalated) {
-    const owner = await chooseOwner(ticket).run();
-    traces.push({ label: `owner ${ticket.id}`, evidence: owner.evidence });
-    const name = owner.status === "uncertain" ? "uncertain — assign by hand" : (owner.value?.name ?? "none on call fits");
-    console.log(`  ${ticket.id} → ${name} ${dim(confidence(owner.evidence))}`);
+  for (const { ticket, owner } of report.owners) {
+    console.log(`  ${ticket.id} → ${ownerName(owner)} ${dim(confidence(owner.evidence))}`);
   }
 
   heading("Summary");
-  console.log(`  escalated: ${desk.escalated.map((t) => t.id).join(", ") || "-"}`);
-  console.log(`  review:    ${desk.review.map((t) => t.id).join(", ") || "-"}`);
-  console.log(`  unchanged: ${desk.unchanged.map((t) => t.id).join(", ") || "-"}`);
-  const requests = traces.flatMap((t) => t.evidence.requests);
-  const tokens = requests.reduce((sum, r) => sum + r.usage.input_tokens + r.usage.output_tokens, 0);
+  console.log(`  escalated: ${desk.escalated.map((ticket) => ticket.id).join(", ") || "-"}`);
+  console.log(`  review:    ${desk.review.map((ticket) => ticket.id).join(", ") || "-"}`);
+  console.log(`  unchanged: ${desk.unchanged.map((ticket) => ticket.id).join(", ") || "-"}`);
+  const requests = report.traces.flatMap((trace) => trace.evidence.requests);
+  const tokens = requests.reduce((sum, request) => sum + request.usage.input_tokens + request.usage.output_tokens, 0);
   console.log(dim(`  ${requests.length} requests, ${tokens} tokens, model ${requests[0]?.model ?? "?"}`));
 
   if (flags.trace) {
     heading("Trace");
-    for (const { label, evidence } of traces) {
+    for (const { label, evidence } of report.traces) {
       console.log(`\n  ${label}`);
       for (const judgment of evidence.judgments) console.log(`    ${formatJudgment(judgment)}`);
     }
   }
+}
+
+function incidentLabel(link: Judgment<Incident | null>): string {
+  if (link.status === "uncertain") return "uncertain";
+  if (link.value) return `${link.value.id} ${dim(link.value.title)}`;
+  return dim("no known incident");
+}
+
+function ownerName(owner: Judgment<Engineer | null>): string {
+  if (owner.status === "uncertain") return "uncertain — assign by hand";
+  return owner.value?.name ?? "none on call fits";
+}
+
+async function runDesk(): Promise<void> {
+  const report = await triage();
+  printDesk(report);
 }
 
 function showPlan(): void {
@@ -174,8 +225,8 @@ function showPlan(): void {
 }
 
 async function measureVocabulary(): Promise<void> {
-  heading(`measure(blocked) over ${blockedFixtures.length} fixtures`);
-  const report = await sense.measure(blocked, blockedFixtures, { describedBy: describeTicket });
+  heading(`grade(blocked) over ${blockedFixtures.length} fixtures`);
+  const report = await sense.grade(blocked, blockedFixtures, { describedBy: describeTicket });
   console.log(`  accuracy ${fmt(report.accuracy)}  coverage ${fmt(report.coverage)}`);
   console.log(`  false positives ${report.falsePositives}, false negatives ${report.falseNegatives}, abstentions ${report.abstentions}`);
   for (const { fixture } of report.misjudged) console.log(`  misjudged: ${fixture.note}`);

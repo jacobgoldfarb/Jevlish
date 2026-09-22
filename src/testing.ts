@@ -1,7 +1,6 @@
-import type { ConditionLike } from "./expressions/condition.js";
-import { toCondition } from "./expressions/condition.js";
+import { type Condition, type ConditionLike, toCondition } from "./expressions/condition.js";
 import type { Judgment } from "./judgment.js";
-import { type PartialPolicy, resolvePolicy } from "./policy.js";
+import { type AcceptancePolicy, type PartialPolicy, resolvePolicy } from "./policy.js";
 import type { Runtime } from "./runtime/runtime.js";
 import { type Projection, contextFor, judge } from "./builders/subject.js";
 
@@ -33,12 +32,19 @@ export interface MeasureOptions<T> {
   readonly policy?: PartialPolicy;
 }
 
+type Classification = "truePositive" | "trueNegative" | "falsePositive" | "falseNegative" | "abstention";
+
+interface JudgedFixture<T> {
+  readonly fixture: Fixture<T>;
+  readonly judgment: Judgment<boolean>;
+}
+
 /**
- * Evaluate a meaning against labelled fixtures the way you would test a
+ * Grade a meaning against labelled fixtures the way you would test a
  * function. Reports false positives, false negatives, and abstentions
  * separately: an abstention is a policy outcome, not a wrong answer.
  */
-export async function measure<T>(
+export async function grade<T>(
   runtime: Runtime,
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],
@@ -46,45 +52,59 @@ export async function measure<T>(
 ): Promise<Report<T>> {
   const condition = toCondition(meaning);
   const policy = resolvePolicy(runtime.policy, options.policy);
-  const judgments = await Promise.all(
-    fixtures.map((fixture) => judge(contextFor(runtime, fixture.subject, options.describedBy, policy), condition)),
+  const rows = await Promise.all(
+    fixtures.map((fixture) => judgeFixture(runtime, condition, fixture, policy, options.describedBy)),
   );
+  return reportFrom(rows);
+}
 
-  let truePositives = 0;
-  let trueNegatives = 0;
-  let falsePositives = 0;
-  let falseNegatives = 0;
+async function judgeFixture<T>(
+  runtime: Runtime,
+  condition: Condition<T>,
+  fixture: Fixture<T>,
+  policy: AcceptancePolicy,
+  projection: Projection<T> | undefined,
+): Promise<JudgedFixture<T>> {
+  const judgment = await judge(contextFor(runtime, fixture.subject, projection, policy), condition);
+  return { fixture, judgment };
+}
+
+function classify<T>(row: JudgedFixture<T>): Classification {
+  const { fixture, judgment } = row;
+  if (judgment.status === "uncertain") return "abstention";
+  if (judgment.value === fixture.expected) return fixture.expected ? "truePositive" : "trueNegative";
+  return judgment.value ? "falsePositive" : "falseNegative";
+}
+
+function reportFrom<T>(rows: readonly JudgedFixture<T>[]): Report<T> {
+  const counts: Record<Classification, number> = {
+    truePositive: 0,
+    trueNegative: 0,
+    falsePositive: 0,
+    falseNegative: 0,
+    abstention: 0,
+  };
   const misjudged: Array<{ fixture: Fixture<T>; judgment: Judgment<boolean> }> = [];
   const abstained: Array<{ fixture: Fixture<T>; judgment: Judgment<boolean> }> = [];
 
-  fixtures.forEach((fixture, index) => {
-    const judgment = judgments[index];
-    if (!judgment) return;
-    if (judgment.status === "uncertain") {
-      abstained.push({ fixture, judgment });
-      return;
-    }
-    if (judgment.value === fixture.expected) {
-      if (fixture.expected) truePositives += 1;
-      else trueNegatives += 1;
-    } else {
-      if (judgment.value) falsePositives += 1;
-      else falseNegatives += 1;
-      misjudged.push({ fixture, judgment });
-    }
-  });
+  for (const row of rows) {
+    const kind = classify(row);
+    counts[kind] += 1;
+    if (kind === "falsePositive" || kind === "falseNegative") misjudged.push(row);
+    if (kind === "abstention") abstained.push(row);
+  }
 
-  const decided = fixtures.length - abstained.length;
+  const decided = rows.length - counts.abstention;
   return {
-    total: fixtures.length,
+    total: rows.length,
     decided,
-    truePositives,
-    trueNegatives,
-    falsePositives,
-    falseNegatives,
-    abstentions: abstained.length,
-    accuracy: decided === 0 ? null : (truePositives + trueNegatives) / decided,
-    coverage: fixtures.length === 0 ? 0 : decided / fixtures.length,
+    truePositives: counts.truePositive,
+    trueNegatives: counts.trueNegative,
+    falsePositives: counts.falsePositive,
+    falseNegatives: counts.falseNegative,
+    abstentions: counts.abstention,
+    accuracy: decided === 0 ? null : (counts.truePositive + counts.trueNegative) / decided,
+    coverage: rows.length === 0 ? 0 : decided / rows.length,
     misjudged,
     abstained,
   };

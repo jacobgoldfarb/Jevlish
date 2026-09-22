@@ -1,0 +1,22 @@
+{
+  "name": "insights",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample app: mine user feedback for product insights. Every number is a count of judgments; every quote is a user's own words.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=../../.env --import tsx src/main.ts",
+    "plan": "node --env-file=../../.env --import tsx src/main.ts --plan",
+    "trace": "node --env-file=../../.env --import tsx src/main.ts --trace",
+    "measure": "node --env-file=../../.env --import tsx src/measure.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jevlish": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

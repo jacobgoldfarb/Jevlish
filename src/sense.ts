@@ -2,14 +2,14 @@ import { From } from "./builders/from.js";
 import { Given } from "./builders/given.js";
 import type { ConditionLike } from "./expressions/condition.js";
 import { Runtime, type SenseConfig } from "./runtime/runtime.js";
-import { type Fixture, type MeasureOptions, type Report, measure as measureWith } from "./testing.js";
+import { type Fixture, type MeasureOptions, type Report, grade as gradeWith } from "./testing.js";
 
 /** A configured instance of the language: the verbs, bound to one runtime. */
 export interface Sense {
   readonly runtime: Runtime;
   given<T>(subject: T): Given<T>;
   from<T>(items: readonly T[]): From<T>;
-  measure<T>(meaning: ConditionLike<T>, fixtures: readonly Fixture<T>[], options?: MeasureOptions<T>): Promise<Report<T>>;
+  grade<T>(meaning: ConditionLike<T>, fixtures: readonly Fixture<T>[], options?: MeasureOptions<T>): Promise<Report<T>>;
 }
 
 export function createSense(config: SenseConfig = {}): Sense {
@@ -18,7 +18,7 @@ export function createSense(config: SenseConfig = {}): Sense {
     runtime,
     given: (subject) => new Given(runtime, subject),
     from: (items) => new From(runtime, items),
-    measure: (meaning, fixtures, options) => measureWith(runtime, meaning, fixtures, options),
+    grade: (meaning, fixtures, options) => gradeWith(runtime, meaning, fixtures, options),
   };
 }
 
@@ -43,10 +43,10 @@ export function from<T>(items: readonly T[]): From<T> {
   return current().from(items);
 }
 
-export function measure<T>(
+export function grade<T>(
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],
   options?: MeasureOptions<T>,
 ): Promise<Report<T>> {
-  return current().measure(meaning, fixtures, options);
+  return current().grade(meaning, fixtures, options);
 }

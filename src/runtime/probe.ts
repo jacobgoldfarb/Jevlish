@@ -4,6 +4,9 @@ import { SenseError } from "../errors.js";
 import type { Condition, SemanticCondition } from "../expressions/condition.js";
 import type { Scale } from "../expressions/scale.js";
 import type { Answer, EvidenceLog, Truth } from "../judgment.js";
+
+type ScoreAnswer = Extract<Answer, { type: "score" }>;
+type ChoiceAnswer = Extract<Answer, { type: "choice" }>;
 import * as logic from "../logic.js";
 import type { AcceptancePolicy } from "../policy.js";
 import { truthOf } from "../policy.js";
@@ -102,18 +105,7 @@ export class Probe<T> {
             throw new SenseError(`Expected a noul answer for question ${id}.`);
           }
           const truth = truthOf(answer.noul, policy.noul);
-          if (!this.recorded.has(id)) {
-            this.recorded.add(id);
-            const question = this.questions[id];
-            this.log.judgments.push({
-              kind: "noul",
-              id,
-              label: node.name ?? node.proposition,
-              instructions: question?.instructions ?? node.proposition,
-              probability: answer.noul,
-              truth,
-            });
-          }
+          this.recordNoul(id, node, answer.noul, truth);
           return truth;
         }
         case "not":
@@ -135,27 +127,9 @@ export class Probe<T> {
   ): ScoreReading {
     const answer = answers[id];
     if (!answer || answer.type !== "score") throw new SenseError(`Expected a score answer for question ${id}.`);
-    const accepted = answer.confidence >= policy.score.minConfidence;
-    const level = Math.min(scale.top, Math.max(0, Math.round(answer.score)));
-    this.log.judgments.push({
-      kind: "score",
-      id,
-      label: scale.name ?? scale.question,
-      instructions: scale.question,
-      score: answer.score,
-      confidence: answer.confidence,
-      probabilities: answer.probabilities,
-      accepted,
-    });
-    return {
-      score: answer.score,
-      normalized: scale.top === 0 ? 0 : answer.score / scale.top,
-      level,
-      levelDescription: scale.levels[level] ?? null,
-      confidence: answer.confidence,
-      probabilities: answer.probabilities,
-      accepted,
-    };
+    const reading = scoreReading(answer, scale, policy);
+    this.recordScore(id, scale, reading);
+    return reading;
   }
 
   readChoice(
@@ -166,18 +140,9 @@ export class Probe<T> {
   ): ChoiceReading {
     const answer = answers[id];
     if (!answer || answer.type !== "choice") throw new SenseError(`Expected a choice answer for question ${id}.`);
-    const accepted = answer.confidence >= policy.choice.minConfidence;
-    this.log.judgments.push({
-      kind: "choice",
-      id,
-      label,
-      instructions: this.questions[id]?.instructions ?? label,
-      choice: answer.choice,
-      confidence: answer.confidence,
-      probabilities: answer.probabilities,
-      accepted,
-    });
-    return { choice: answer.choice, confidence: answer.confidence, probabilities: answer.probabilities, accepted };
+    const reading = choiceReading(answer, policy);
+    this.recordChoice(id, label, reading);
+    return reading;
   }
 
   private reduce(node: Condition<T>): Reduced {
@@ -224,13 +189,7 @@ export class Probe<T> {
         return;
       case "semantic": {
         const instructions = node.proposition;
-        const criteria =
-          node.yes !== undefined || node.no !== undefined
-            ? {
-                ...(node.yes !== undefined ? { true: node.yes } : {}),
-                ...(node.no !== undefined ? { false: node.no } : {}),
-              }
-            : undefined;
+        const criteria = noulCriteria(node);
         const key = stableStringify({ instructions, criteria });
         let id = this.idsByKey.get(key);
         if (!id) {
@@ -252,10 +211,82 @@ export class Probe<T> {
     }
   }
 
+  private recordNoul(id: string, node: SemanticCondition, probability: number, truth: Truth): void {
+    if (this.recorded.has(id)) return;
+    this.recorded.add(id);
+    const question = this.questions[id];
+    this.log.judgments.push({
+      kind: "noul",
+      id,
+      label: node.name ?? node.proposition,
+      instructions: question?.instructions ?? node.proposition,
+      probability,
+      truth,
+    });
+  }
+
+  private recordScore(id: string, scale: Scale<unknown>, reading: ScoreReading): void {
+    this.log.judgments.push({
+      kind: "score",
+      id,
+      label: scale.name ?? scale.question,
+      instructions: scale.question,
+      score: reading.score,
+      confidence: reading.confidence,
+      probabilities: reading.probabilities,
+      accepted: reading.accepted,
+    });
+  }
+
+  private recordChoice(id: string, label: string, reading: ChoiceReading): void {
+    this.log.judgments.push({
+      kind: "choice",
+      id,
+      label,
+      instructions: this.questions[id]?.instructions ?? label,
+      choice: reading.choice,
+      confidence: reading.confidence,
+      probabilities: reading.probabilities,
+      accepted: reading.accepted,
+    });
+  }
+
   private nextId(): string {
     this.counter += 1;
     return `q${this.counter}`;
   }
+}
+
+function scoreReading(answer: ScoreAnswer, scale: Scale<unknown>, policy: AcceptancePolicy): ScoreReading {
+  const accepted = answer.confidence >= policy.score.minConfidence;
+  const level = Math.min(scale.top, Math.max(0, Math.round(answer.score)));
+  return {
+    score: answer.score,
+    normalized: scale.top === 0 ? 0 : answer.score / scale.top,
+    level,
+    levelDescription: scale.levels[level] ?? null,
+    confidence: answer.confidence,
+    probabilities: answer.probabilities,
+    accepted,
+  };
+}
+
+function choiceReading(answer: ChoiceAnswer, policy: AcceptancePolicy): ChoiceReading {
+  const accepted = answer.confidence >= policy.choice.minConfidence;
+  return {
+    choice: answer.choice,
+    confidence: answer.confidence,
+    probabilities: answer.probabilities,
+    accepted,
+  };
+}
+
+function noulCriteria(node: SemanticCondition): { true?: EntryType; false?: EntryType } | undefined {
+  if (node.yes === undefined && node.no === undefined) return undefined;
+  const criteria: { true?: EntryType; false?: EntryType } = {};
+  if (node.yes !== undefined) criteria.true = node.yes;
+  if (node.no !== undefined) criteria.false = node.no;
+  return criteria;
 }
 
 /** Does the reduced tree still need the model? */

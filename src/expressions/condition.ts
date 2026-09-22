@@ -50,6 +50,18 @@ export type Condition<T> =
  */
 export type ConditionLike<T> = string | ((subject: T) => boolean) | Meaning<T>;
 
+export function conjoin<T>(left: Condition<T>, right: ConditionLike<T>): Condition<T> {
+  return { type: "and", left, right: toCondition(right) };
+}
+
+export function disjoin<T>(left: Condition<T>, right: ConditionLike<T>): Condition<T> {
+  return { type: "or", left, right: toCondition(right) };
+}
+
+export function without<T>(base: Condition<T>, exception: ConditionLike<T>): Condition<T> {
+  return { type: "and", left: base, right: { type: "not", inner: toCondition(exception) } };
+}
+
 export function toCondition<T>(input: ConditionLike<T>): Condition<T> {
   if (typeof input === "string") {
     const proposition = input.trim();
@@ -110,19 +122,15 @@ export class Meaning<T = unknown> {
   }
 
   and(other: ConditionLike<T>): Meaning<T> {
-    return new Meaning({ type: "and", left: this.node, right: toCondition(other) });
+    return new Meaning(conjoin(this.node, other));
   }
 
   or(other: ConditionLike<T>): Meaning<T> {
-    return new Meaning({ type: "or", left: this.node, right: toCondition(other) });
+    return new Meaning(disjoin(this.node, other));
   }
 
   unless(other: ConditionLike<T>): Meaning<T> {
-    return new Meaning({
-      type: "and",
-      left: this.node,
-      right: { type: "not", inner: toCondition(other) },
-    });
+    return new Meaning(without(this.node, other));
   }
 
   not(): Meaning<T> {

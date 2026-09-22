@@ -42,7 +42,7 @@ const ranked = await sense
   .rankedBy(disruption, "highest first")
   .take(10)
   .run();
-console.log("items:    ", ranked.scored?.map((s) => `${s.item.id}(${s.score.toFixed(2)})`).join(", "));
+console.log("items:    ", ranked.scored.map((s) => `${s.item.id}(${s.score.toFixed(2)})`).join(", "));
 console.log("uncertain:", ranked.uncertain.map((t) => t.id).join(", ") || "-");
 console.log("rejected: ", ranked.rejected.map((t) => t.id).join(", ") || "-");
 console.log(`requests: ${ranked.evidence.requests.length}, tokens in: ${ranked.evidence.requests.reduce((n, r) => n + r.usage.input_tokens, 0)}`);
@@ -64,9 +64,9 @@ for (const ticket of [tickets[0]!, tickets[4]!, tickets[3]!]) {
   );
 }
 
-// 5. Measure a meaning against fixtures, like a unit test.
-console.log("\n== measure(blocked, fixtures) ==");
-const report = await sense.measure(
+// 5. Grade a meaning against fixtures, like a unit test.
+console.log("\n== grade(blocked, fixtures) ==");
+const report = await sense.grade(
   blocked,
   tickets.map((t): { subject: Ticket; expected: boolean; note: string } => ({
     subject: t,

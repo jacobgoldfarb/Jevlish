@@ -62,10 +62,10 @@ describe("runtime", () => {
     await expect(sense.given("x").when("p").run()).rejects.toThrow("boom");
   });
 
-  it("measures a meaning against fixtures", async () => {
+  it("grades a meaning against fixtures", async () => {
     const client = fake((_question, state) => yes((state as { p: number }).p));
     const sense = createSense({ client });
-    const report = await sense.measure(means<{ p: number }>("p"), [
+    const report = await sense.grade(means<{ p: number }>("p"), [
       { subject: { p: 0.99 }, expected: true },
       { subject: { p: 0.01 }, expected: false },
       { subject: { p: 0.99 }, expected: false, note: "false positive" },

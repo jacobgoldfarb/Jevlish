@@ -37,7 +37,7 @@ export class Runtime {
   private readonly semaphore: Semaphore;
   private readonly cache: Cache | undefined;
   private readonly config: SenseConfig;
-  private evaluator: Evaluator | undefined;
+  private transport: Evaluator | undefined;
 
   constructor(config: SenseConfig = {}) {
     this.config = config;
@@ -46,7 +46,7 @@ export class Runtime {
     this.model = config.model;
     this.semaphore = new Semaphore(config.concurrency ?? 8);
     this.cache = config.cache;
-    this.evaluator = config.client;
+    this.transport = config.client;
     if (this.questionsPerRequest < 1) throw new RangeError("questionsPerRequest must be at least 1");
   }
 
@@ -76,45 +76,63 @@ export class Runtime {
   }
 
   private async send(request: PlannedRequest, log: EvidenceLog): Promise<Record<string, Answer>> {
-    const model = this.model ?? this.client().defaultModelName;
-    const key = stableStringify({ model, state: request.state, questions: request.questions });
+    const fetched = await this.cachedOrFetch(request);
+    this.recordRequest(request, fetched.result, fetched.cached, log);
+    return fetched.result.answers as Record<string, Answer>;
+  }
+
+  private async cachedOrFetch(request: PlannedRequest): Promise<{ result: SystemOneResult<Questions>; cached: boolean }> {
+    const key = stableStringify({ model: this.modelName(), state: request.state, questions: request.questions });
     const cached = await this.cache?.get(key);
-    const result = cached ?? (await this.semaphore.run(() => this.client().evaluator.systemOne({
-      state: request.state,
-      questions: request.questions,
-      ...(this.model ? { model: this.model } : {}),
-    })));
-    if (!cached) await this.cache?.set(key, result);
+    if (cached) return { result: cached, cached: true };
+    const result = await this.semaphore.run(() =>
+      this.evaluator().systemOne({
+        state: request.state,
+        questions: request.questions,
+        ...(this.model ? { model: this.model } : {}),
+      }),
+    );
+    await this.cache?.set(key, result);
+    return { result, cached: false };
+  }
+
+  private recordRequest(
+    request: PlannedRequest,
+    result: SystemOneResult<Questions>,
+    cached: boolean,
+    log: EvidenceLog,
+  ): void {
     log.requests.push({
       model: result.model,
       state: request.state,
       questions: request.questions,
       answers: result.answers as Record<string, Answer>,
       usage: result.usage,
-      cached: cached !== undefined,
+      cached,
     });
-    return result.answers as Record<string, Answer>;
   }
 
-  private client(): { evaluator: Evaluator; defaultModelName: string } {
-    if (!this.evaluator) {
-      try {
-        const client = new TypeSafeClient({
-          ...(this.config.apiKey ? { apiKey: this.config.apiKey } : {}),
-          ...(this.config.model ? { defaultModel: this.config.model } : {}),
-        });
-        this.evaluator = client;
-        return { evaluator: client, defaultModelName: client.defaultModel };
-      } catch (error) {
-        throw new SenseError(
-          "Could not create a TypeSafe client. Pass `apiKey` or set TYPESAFE_API_KEY, or supply `client`.",
-          { cause: error },
-        );
-      }
+  private evaluator(): Evaluator {
+    if (this.transport) return this.transport;
+    try {
+      const client = new TypeSafeClient({
+        ...(this.config.apiKey ? { apiKey: this.config.apiKey } : {}),
+        ...(this.config.model ? { defaultModel: this.config.model } : {}),
+      });
+      this.transport = client;
+      return client;
+    } catch (error) {
+      throw new SenseError(
+        "Could not create a TypeSafe client. Pass `apiKey` or set TYPESAFE_API_KEY, or supply `client`.",
+        { cause: error },
+      );
     }
-    const defaultModelName =
-      this.evaluator instanceof TypeSafeClient ? this.evaluator.defaultModel : (this.model ?? "custom");
-    return { evaluator: this.evaluator, defaultModelName };
+  }
+
+  private modelName(): string {
+    if (this.model) return this.model;
+    const transport = this.evaluator();
+    return transport instanceof TypeSafeClient ? transport.defaultModel : "custom";
   }
 }
 

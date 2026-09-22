@@ -1,5 +1,5 @@
 // Verbs
-export { configure, createSense, from, given, measure, type Sense } from "./sense.js";
+export { configure, createSense, from, given, grade, type Sense } from "./sense.js";
 
 // Nouns: reusable meanings and scales
 export {
@@ -13,6 +13,7 @@ export {
   type ConditionLike,
 } from "./expressions/condition.js";
 export { Scale, scale } from "./expressions/scale.js";
+export { Candidates, Selection, chooseFrom } from "./expressions/selection.js";
 
 // Results
 export {
@@ -31,20 +32,20 @@ export { defaultPolicy, resolvePolicy, truthOf, type AcceptancePolicy, type Part
 export * as logic from "./logic.js";
 
 // Builders (types for annotations)
+export { Ask, type Askable, type Asked, type Measurement } from "./builders/ask.js";
 export {
   Branch,
   Choose,
   ChooseCandidates,
   Given,
-  Measure,
   Predicate,
   ReadyBranch,
   type BranchTaken,
   type Decision,
   type Handler,
-  type Measurement,
 } from "./builders/given.js";
-export { From, Query, type QueryResult, type RankOrder } from "./builders/from.js";
+export { Measure } from "./builders/measure.js";
+export { From, Query, type QueryResult, type RankedQueryResult, type RankOrder } from "./builders/from.js";
 
 // Runtime
 export { Runtime, type PlannedRequest, type SenseConfig } from "./runtime/runtime.js";
