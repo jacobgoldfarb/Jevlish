@@ -39,9 +39,7 @@ const queue = await from(tickets)
 
 ## What it solves
 
-A Jev call answers a question. The program around it still has to project state, mix the answer with exact checks, apply thresholds, and treat abstention as its own result. Written out by hand, each call site builds that request itself, and the checks end up in the question text.
-
-Predicates reduce the tree first. The Nouls, scores, and choices that remain for one subject go out together. `do`, `otherwise`, and `whenUncertain` call functions you wrote.
+The Jev SDK is shaped like an LLM SDK. You build a request, send it, and get a response back. That fits when the output goes to a user. Most Jev calls don't. They sit in business logic and decide what the code does with an object it already has: whether a ticket escalates, which rows a query keeps, who gets assigned. jevlish gives those decisions the shape of a condition or a filter, since that is what they are.
 
 ## Use
 
