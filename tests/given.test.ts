@@ -102,6 +102,18 @@ describe("given().when()", () => {
     ).toMatchObject({ status: "decided", value: true });
   });
 
+  it("merges chained policy overrides before the predicate is built", async () => {
+    const judgment = await createSense({ client: fake(() => yes(0.75)) })
+      .given(open)
+      .withPolicy({ noul: { yesAbove: 0.6 } })
+      .withPolicy({ noul: { noBelow: 0.1 } })
+      .when(blocked)
+      .run();
+
+    expect(judgment).toMatchObject({ status: "decided", value: true });
+    expect(judgment.evidence.policy.noul).toEqual({ yesAbove: 0.6, noBelow: 0.1 });
+  });
+
   it("records evidence for every judgment, code and model alike", async () => {
     const client = fake(() => yes(0.96));
     const judgment = await createSense({ client })

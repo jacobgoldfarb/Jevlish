@@ -84,6 +84,18 @@ describe("from().where()", () => {
     expect(result.accepted).toEqual([tickets[0]]);
   });
 
+  it("merges chained policy overrides before the query is built", async () => {
+    const result = await createSense({ client: fake(() => yes(0.75)) })
+      .from([tickets[0]!])
+      .withPolicy({ noul: { yesAbove: 0.6 } })
+      .withPolicy({ noul: { noBelow: 0.1 } })
+      .where(reportsProblem)
+      .run();
+
+    expect(result.accepted).toEqual([tickets[0]]);
+    expect(result.evidence.policy.noul).toEqual({ yesAbove: 0.6, noBelow: 0.1 });
+  });
+
   it("ranks lowest first when asked", async () => {
     const result = await createSense({ client: oracle })
       .from(tickets.filter((ticket) => ticket.id !== "e"))

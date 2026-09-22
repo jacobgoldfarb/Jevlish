@@ -3,6 +3,13 @@ import { createSense, means, memoryCache } from "../src/index.js";
 import { fake, textOf, yes } from "./fake.js";
 
 describe("runtime", () => {
+  it.each([0, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid questionsPerRequest values (%s)",
+    (questionsPerRequest) => {
+      expect(() => createSense({ questionsPerRequest })).toThrow(/positive integer/);
+    },
+  );
+
   it("chunks questions into requests and merges answers", async () => {
     const client = fake((question) => yes(textOf(question).endsWith("3") ? 0.99 : 0.01));
     const sense = createSense({ client, questionsPerRequest: 2 });

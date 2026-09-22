@@ -45,7 +45,8 @@ export class From<T> {
 
   /** Override acceptance thresholds for this query. */
   withPolicy(policy: PartialPolicy): From<T> {
-    return new From(this.runtime, this.items, this.projection, policy);
+    const current = resolvePolicy(this.runtime.policy, this.policy);
+    return new From(this.runtime, this.items, this.projection, resolvePolicy(current, policy));
   }
 
   /** Keep the items for which the condition holds. Refine with `.and()`, `.or()`, `.unless()`. */

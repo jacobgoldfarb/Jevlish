@@ -4,6 +4,8 @@ Typed [Jev](https://docs.typesafe.ai) judgments for TypeScript business logic.
 
 Documentation: [jacobgoldfarb.github.io/Jevlish](https://jacobgoldfarb.github.io/Jevlish/)
 
+Upgrading from an earlier release? See the [changelog](./CHANGELOG.md).
+
 Use `given` to judge one value and `from` to filter or rank a collection. Exact checks remain TypeScript functions; semantic checks compile to Jev Noul, Score, and Choice questions.
 
 ```ts
@@ -25,6 +27,8 @@ const decision = await given(ticket)
 npm install jevlish
 export TYPESAFE_API_KEY=...
 ```
+
+From a repository checkout, `npm run example` runs the complete support-triage example.
 
 Expressions are lazy. Use `.plan()` to inspect the state and questions without sending them; use `await` or `.run()` to execute. Results keep uncertainty separate and carry the evidence behind each decision.
 

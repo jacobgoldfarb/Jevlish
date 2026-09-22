@@ -15,8 +15,9 @@ export const blocked = means<Ticket>("the customer is currently unable to comple
 
 export const saysResolved = means<Ticket>("the customer says the problem has been resolved").named("saysResolved");
 
-export const threatensToLeave = means<Ticket>("the customer threatens to cancel or move to a competitor")
-  .named("threatensToLeave");
+export const threatensToLeave = means<Ticket>("the customer says they will cancel or switch providers").named(
+  "threatensToLeave",
+);
 
 export const isOpen = (ticket: Ticket) => ticket.status === "open";
 

@@ -23,7 +23,13 @@ export const blocked = means<Ticket>("the customer is currently unable to comple
 
 export const saysResolved = means<Ticket>("the customer says the problem has been resolved").named("saysResolved");
 
-export const needsAttention = blocked.and((ticket) => ticket.status === "open").unless(saysResolved);
+export const threatensToLeave = means<Ticket>("the customer says they will cancel or switch providers").named(
+  "threatensToLeave",
+);
+
+export const isOpen = (ticket: Ticket) => ticket.status === "open";
+
+export const needsAttention = blocked.unless(saysResolved).or(threatensToLeave).and(isOpen);
 
 export const reportsProblem = means<Ticket>("the message reports a problem with the product")
   .including("something in the product is broken, failing, or behaving wrongly")

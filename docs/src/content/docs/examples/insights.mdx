@@ -25,8 +25,9 @@ Fifty pieces of feedback a week from five channels. A PM reads them and, per mes
 One expression per message, one request each:
 
 ```ts
-const profile = (item: Feedback) =>
-  given(item)
+const askAbout = (item: Feedback) =>
+  sense
+    .given(item)
     .seenAs((f) => ({ message: f.text }))
     .ask({
       problem: describesProblem,          // Noul
@@ -37,8 +38,8 @@ const profile = (item: Feedback) =>
       praise,                             // Noul
       reproducible,                       // Noul
       severity,                           // Score over three described levels
-      area: chooseFrom(AREAS).by("which part of the product the message is mainly about").orNone("…"),
-      existingFeature: chooseFrom(FEATURES).by("the feature that already provides what the user is asking for…").orNone("…"),
+      area,                               // Choice over product areas
+      existingFeature,                    // Choice over shipped features
       paying: (f) => f.plan !== "free",   // code; costs nothing
     });
 ```

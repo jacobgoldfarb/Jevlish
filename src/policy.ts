@@ -40,18 +40,27 @@ export const defaultPolicy: AcceptancePolicy = {
 
 /** Layer an override on a base policy. Throws a RangeError unless `noBelow < yesAbove`. */
 export function resolvePolicy(base: AcceptancePolicy, override?: PartialPolicy): AcceptancePolicy {
-  if (!override) return base;
   const policy: AcceptancePolicy = {
-    noul: { ...base.noul, ...override.noul },
-    choice: { ...base.choice, ...override.choice },
-    score: { ...base.score, ...override.score },
+    noul: { ...base.noul, ...override?.noul },
+    choice: { ...base.choice, ...override?.choice },
+    score: { ...base.score, ...override?.score },
   };
+  probability("noul.yesAbove", policy.noul.yesAbove);
+  probability("noul.noBelow", policy.noul.noBelow);
+  probability("choice.minConfidence", policy.choice.minConfidence);
+  probability("score.minConfidence", policy.score.minConfidence);
   if (policy.noul.noBelow >= policy.noul.yesAbove) {
     throw new RangeError(
       `noul policy needs noBelow < yesAbove (got noBelow=${policy.noul.noBelow}, yesAbove=${policy.noul.yesAbove})`,
     );
   }
   return policy;
+}
+
+function probability(name: string, value: number): void {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new RangeError(`${name} must be between 0 and 1 (got ${value})`);
+  }
 }
 
 /** Map a Noul yes-probability onto three-valued truth under a policy. */

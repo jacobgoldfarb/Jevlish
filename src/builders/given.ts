@@ -44,7 +44,8 @@ export class Given<T> {
 
   /** Override acceptance thresholds for this expression. */
   withPolicy(policy: PartialPolicy): Given<T> {
-    return new Given(this.runtime, this.subject, this.projection, policy);
+    const current = resolvePolicy(this.runtime.policy, this.policy);
+    return new Given(this.runtime, this.subject, this.projection, resolvePolicy(current, policy));
   }
 
   /** State the condition: a proposition in prose, a code predicate, or a reusable meaning. */

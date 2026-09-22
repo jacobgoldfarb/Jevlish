@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { logic } from "../src/index.js";
-import { truthOfProbability } from "../src/runtime.js";
+import { defaultPolicy, logic } from "../src/index.js";
+import { resolvePolicy, truthOfProbability } from "../src/runtime.js";
 
 describe("three-valued logic", () => {
   it("follows Kleene semantics", () => {
@@ -21,5 +21,14 @@ describe("three-valued logic", () => {
     expect(truthOfProbability(0.5, policy)).toBe("uncertain");
     expect(truthOfProbability(0.9, policy)).toBe(true);
     expect(truthOfProbability(0.1, policy)).toBe(false);
+  });
+
+  it.each([
+    { noul: { yesAbove: Number.NaN } },
+    { noul: { noBelow: -0.1 } },
+    { choice: { minConfidence: 1.1 } },
+    { score: { minConfidence: Number.POSITIVE_INFINITY } },
+  ])("rejects non-probability policy thresholds: %o", (override) => {
+    expect(() => resolvePolicy(defaultPolicy, override)).toThrow(/between 0 and 1/);
   });
 });

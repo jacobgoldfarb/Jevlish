@@ -1,6 +1,6 @@
 {
   "name": "jevlish",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Typed Jev judgments for TypeScript business logic.",
   "author": "Jacob Goldfarb",
   "license": "MIT",
@@ -24,32 +24,38 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./runtime": {
       "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js",
       "default": "./dist/runtime.js"
     },
     "./testing": {
       "types": "./dist/testkit.d.ts",
+      "import": "./dist/testkit.js",
       "default": "./dist/testkit.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
       "default": "./dist/types.js"
     }
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm test && npm run build && npm run apps:check",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run exports:check && npm run apps:check",
     "apps:check": "sh scripts/check-apps.sh",
+    "exports:check": "node scripts/check-exports.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

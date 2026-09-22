@@ -48,7 +48,7 @@ export default defineConfig({
         {
           label: "Start",
           items: [
-            { label: "Introduction", link: "/Jevlish/" },
+            { label: "Introduction", link: "/" },
             { slug: "start/install" },
             { slug: "start/quickstart" },
           ],

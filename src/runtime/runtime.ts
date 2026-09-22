@@ -51,7 +51,9 @@ export class Runtime {
     this.semaphore = new Semaphore(config.concurrency ?? 8);
     this.cache = config.cache;
     this.transport = config.client;
-    if (this.questionsPerRequest < 1) throw new RangeError("questionsPerRequest must be at least 1");
+    if (!Number.isInteger(this.questionsPerRequest) || this.questionsPerRequest < 1) {
+      throw new RangeError("questionsPerRequest must be a positive integer");
+    }
   }
 
   /** Split a question set into the requests that would actually be sent. */
