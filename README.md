@@ -61,7 +61,7 @@ import { configure } from "jevlish";
 
 configure({
   model: "jev-1.13", // default: jev-latest
-  policy: { noul: { yesAbove: 0.9, noBelow: 0.1 } },
+  policy: { noul: { yesAbove: 0.9, noBelow: 0.1 } }, // default: 0.8 / 0.2
 });
 ```
 
@@ -71,6 +71,6 @@ That configures the shared runtime behind `given`, `from`, and `grade`. `createS
 
 `given(x).ask({ ... })` batches independent questions. A predicate in that object adds nothing to the request. `await given(x).chooseFrom(candidates).by("...").orNone("...")` resolves the Choice back to your object; `decided(null)` is the none option.
 
-Defaults are Noul yes at P(yes) ≥ 0.9 and no at ≤ 0.1, Choice and Score at confidence ≥ 0.5. A thrown error is a failed request.
+Defaults are Noul yes at P(yes) ≥ 0.8 and no at ≤ 0.2, Choice and Score at confidence ≥ 0.5. A thrown error is a failed request.
 
 `npm test` uses a fake evaluator. `npm run example` runs `examples/triage.ts` (copy `.env.example` to `.env` first).

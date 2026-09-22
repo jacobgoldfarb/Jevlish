@@ -115,7 +115,7 @@ describe("given().when()", () => {
       { kind: "code", label: "code predicate", truth: true },
       expect.objectContaining({ kind: "noul", id: "q1", label: "blocked", probability: 0.96, truth: true }),
     ]);
-    expect(judgment.evidence.policy.noul.yesAbove).toBe(0.9);
+    expect(judgment.evidence.policy.noul.yesAbove).toBe(0.8);
   });
 });
 

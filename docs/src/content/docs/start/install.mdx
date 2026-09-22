@@ -29,7 +29,7 @@ Every field is optional:
 
 - `apiKey` instead of the environment variable. Ignored when `client` is given.
 - `model`, defaulting to the SDK's `jev-latest`.
-- `policy`: the thresholds that turn probabilities into decisions. The defaults are Noul yes at P(yes) ≥ 0.9 and no at ≤ 0.1, Choice and Score at confidence ≥ 0.5. See [Uncertainty and acceptance policy](/Jevlish/guides/uncertainty/).
+- `policy`: the thresholds that turn probabilities into decisions. The defaults are Noul yes at P(yes) ≥ 0.8 and no at ≤ 0.2, Choice and Score at confidence ≥ 0.5. See [Uncertainty and acceptance policy](/Jevlish/guides/uncertainty/).
 - `client`: your own transport, or a fake in tests. See [Testing](/Jevlish/guides/testing/).
 - `cache`, `concurrency`, `questionsPerRequest`: see [Runtime](/Jevlish/guides/runtime/).
 

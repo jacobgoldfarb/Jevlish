@@ -33,7 +33,7 @@ export interface PartialPolicy {
 
 /** Conservative starting point. Tune against your own fixtures. */
 export const defaultPolicy: AcceptancePolicy = {
-  noul: { yesAbove: 0.9, noBelow: 0.1 },
+  noul: { yesAbove: 0.8, noBelow: 0.2 },
   choice: { minConfidence: 0.5 },
   score: { minConfidence: 0.5 },
 };
