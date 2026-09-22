@@ -45,7 +45,7 @@ describe("from().where()", () => {
       .take(10)
       .run();
 
-    expect(result.items.map((ticket) => ticket.id)).toEqual(["a", "c"]);
+    expect(result.accepted.map((ticket) => ticket.id)).toEqual(["a", "c"]);
     expect(result.uncertain.map((ticket) => ticket.id)).toEqual(["e"]);
     expect(result.rejected.map((ticket) => ticket.id).sort()).toEqual(["b", "d"]);
     expect(result.scored?.map((entry) => entry.score)).toEqual([2, 1]);
@@ -59,7 +59,7 @@ describe("from().where()", () => {
       .rankedBy(disruption)
       .plan();
 
-    expect(plan.subjects).toBe(5);
+    expect(plan.subjectCount).toBe(5);
     expect(plan.decidedByCode).toBe(1);
     expect(plan.requestCount).toBe(4);
     expect(plan.questionCount).toBe(8);
@@ -70,7 +70,7 @@ describe("from().where()", () => {
   it("retains items whose ranking judgment failed the policy as uncertain", async () => {
     const shaky = fake((question) => (question.type === "score" ? rate(1, 0.1, 3) : yes(0.99)));
     const result = await createSense({ client: shaky }).from(tickets).where(reportsProblem).rankedBy(disruption).run();
-    expect(result.items).toEqual([]);
+    expect(result.accepted).toEqual([]);
     expect(result.uncertain).toHaveLength(5);
   });
 
@@ -79,7 +79,7 @@ describe("from().where()", () => {
       .from(tickets.filter((ticket) => ticket.id !== "e"))
       .rankedBy(disruption, "lowest first")
       .run();
-    expect(result.items.map((ticket) => ticket.disruption)).toEqual([0, 0, 1, 2]);
+    expect(result.accepted.map((ticket) => ticket.disruption)).toEqual([0, 0, 1, 2]);
   });
 
   it("expresses relationships as a query over pairs built in code", async () => {
@@ -98,12 +98,12 @@ describe("from().where()", () => {
       return yes(match ? 0.97 : 0.03);
     });
 
-    const { items } = await createSense({ client })
+    const { accepted } = await createSense({ client })
       .from(pairs)
       .where("feature would address the need described in request")
       .run();
 
-    expect(items).toEqual([
+    expect(accepted).toEqual([
       { request: feedback[0], feature: roadmap[0] },
       { request: feedback[1], feature: roadmap[1] },
     ]);

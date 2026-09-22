@@ -9,8 +9,8 @@ import { SenseError } from "../errors.js";
 export interface SemanticCondition {
   readonly type: "semantic";
   readonly proposition: string;
-  readonly yes?: EntryType;
-  readonly no?: EntryType;
+  readonly including?: EntryType;
+  readonly excluding?: EntryType;
   readonly name?: string;
 }
 
@@ -104,7 +104,7 @@ export class Meaning<T = unknown> {
    * Only valid on a single proposition. Becomes Noul `criteria.true`.
    */
   including(description: EntryType): Meaning<T> {
-    return new Meaning({ ...this.semanticNode("including"), yes: description }, this.name);
+    return new Meaning({ ...this.semanticNode("including"), including: description }, this.name);
   }
 
   /**
@@ -112,7 +112,7 @@ export class Meaning<T = unknown> {
    * even if it looks close. Only valid on a single proposition. Becomes Noul `criteria.false`.
    */
   excluding(description: EntryType): Meaning<T> {
-    return new Meaning({ ...this.semanticNode("excluding"), no: description }, this.name);
+    return new Meaning({ ...this.semanticNode("excluding"), excluding: description }, this.name);
   }
 
   /** Give the meaning a name for traces, fixtures, and error messages. */
@@ -159,7 +159,7 @@ export class Meaning<T = unknown> {
 function serialize<T>(node: Condition<T>): unknown {
   switch (node.type) {
     case "semantic":
-      return { proposition: node.proposition, yes: node.yes, no: node.no, name: node.name };
+      return { proposition: node.proposition, including: node.including, excluding: node.excluding, name: node.name };
     case "code":
       return { code: node.name ?? node.predicate.name ?? "predicate" };
     case "and":

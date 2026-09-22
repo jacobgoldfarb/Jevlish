@@ -31,14 +31,14 @@ describe("given().ask()", () => {
 
     const answers = await createSense({ client })
       .given(feedback)
-      .describedBy((f) => ({ text: f.text }))
+      .seenAs((f) => ({ text: f.text }))
       .ask({
         problem,
         churn,
         paying: (f) => f.plan !== "free",
         severity,
         area: chooseFrom(area)
-          .describedBy((a) => a.description)
+          .seenAs((a) => a.description)
           .by("which part of the product the message is about")
           .orNone("not about any of these"),
       })

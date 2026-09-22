@@ -2,7 +2,7 @@ import type { EntryType } from "@typesafe-ai/sdk";
 import { SenseError } from "../errors.js";
 import { type Condition, type ConditionLike, Meaning, toCondition } from "../expressions/condition.js";
 import { Scale } from "../expressions/scale.js";
-import { Selection, compileSelection, resolveSelection } from "../expressions/selection.js";
+import { Selection, resolveSelection, toChoiceCriteria } from "../expressions/selection.js";
 import { type Answer, type Evidence, type Judgment, EvidenceLog, decided, uncertain } from "../judgment.js";
 import type { AcceptancePolicy } from "../policy.js";
 import { type Plan, planFor } from "../runtime/plan.js";
@@ -32,30 +32,26 @@ export type Asked<T, Q extends Record<string, Askable<T>>> = {
       : Judgment<boolean>;
 };
 
-type Pending = { status: "decided"; value: unknown } | { status: "uncertain" };
-type Reader = (answers: Readonly<Record<string, Answer>>) => Pending;
+/** A judgment before it is joined with the evidence it shares with its siblings. */
+type Outcome = { status: "decided"; value: unknown } | { status: "uncertain" };
+type Reader = (answers: Readonly<Record<string, Answer>>) => Outcome;
 
-const decidedPending = (value: unknown): Pending => ({ status: "decided", value });
-const uncertainPending: Pending = { status: "uncertain" };
+const decidedOutcome = (value: unknown): Outcome => ({ status: "decided", value });
+const uncertainOutcome: Outcome = { status: "uncertain" };
 
-function toJudgment(pending: Pending, evidence: Evidence): Judgment<unknown> {
-  return pending.status === "decided" ? decided(pending.value, evidence) : uncertain(evidence);
+function toJudgment(outcome: Outcome, evidence: Evidence): Judgment<unknown> {
+  return outcome.status === "decided" ? decided(outcome.value, evidence) : uncertain(evidence);
 }
 
-function recordEveryLeaf(
+/** Reading an answer records its judgment in the log, so every reader runs before the evidence is snapshotted. */
+function judgmentsFrom(
   readers: ReadonlyArray<readonly [string, Reader]>,
   answers: Readonly<Record<string, Answer>>,
-): Array<readonly [string, Pending]> {
-  return readers.map(([key, read]) => [key, read(answers)] as const);
-}
-
-function judgmentsSharing(
-  outcomes: ReadonlyArray<readonly [string, Pending]>,
-  evidence: Evidence,
+  log: EvidenceLog,
 ): Record<string, Judgment<unknown>> {
-  const judgments: Record<string, Judgment<unknown>> = {};
-  for (const [key, pending] of outcomes) judgments[key] = toJudgment(pending, evidence);
-  return judgments;
+  const outcomes = readers.map(([key, read]) => [key, read(answers)] as const);
+  const evidence = log.toEvidence();
+  return Object.fromEntries(outcomes.map(([key, outcome]) => [key, toJudgment(outcome, evidence)]));
 }
 
 function isConditionLike<T>(question: unknown): question is ConditionLike<T> {
@@ -84,16 +80,16 @@ function compileScale<T>(probe: Probe<T>, scale: Scale<T>, policy: AcceptancePol
   const id = probe.addScore(scale as Scale<unknown>);
   return (answers) => {
     const reading = probe.readScore(id, scale as Scale<unknown>, answers, policy);
-    return reading.accepted ? decidedPending(measurementOf(reading)) : uncertainPending;
+    return reading.accepted ? decidedOutcome(measurementOf(reading)) : uncertainOutcome;
   };
 }
 
 function compileChoice<T>(probe: Probe<T>, selection: Selection<unknown, unknown>, policy: AcceptancePolicy): Reader {
-  const { criteria, byOption } = compileSelection(selection);
+  const { criteria, byOption } = toChoiceCriteria(selection);
   const id = probe.addChoice(selection.criterion, criteria);
   return (answers) => {
     const reading = probe.readChoice(id, selection.criterion, answers, policy);
-    return reading.accepted ? decidedPending(resolveSelection(selection, reading.choice, byOption)) : uncertainPending;
+    return reading.accepted ? decidedOutcome(resolveSelection(selection, reading.choice, byOption)) : uncertainOutcome;
   };
 }
 
@@ -101,7 +97,7 @@ function compileCondition<T>(probe: Probe<T>, condition: Condition<T>, policy: A
   const bound = probe.bind(condition);
   return (answers) => {
     const truth = probe.resolve(bound, answers, policy);
-    return truth === "uncertain" ? uncertainPending : decidedPending(truth);
+    return truth === "uncertain" ? uncertainOutcome : decidedOutcome(truth);
   };
 }
 
@@ -139,8 +135,7 @@ export class Ask<T, Q extends Record<string, Askable<T>>> {
   async run(): Promise<Asked<T, Q>> {
     const { log, probe, readers } = this.prepare();
     const answers = probe.needsInference ? await this.ctx.runtime.ask(probe.state, probe.questions, log) : {};
-    const outcomes = recordEveryLeaf(readers, answers);
-    return judgmentsSharing(outcomes, log.toEvidence()) as Asked<T, Q>;
+    return judgmentsFrom(readers, answers, log) as Asked<T, Q>;
   }
 
   private prepare(): { log: EvidenceLog; probe: Probe<T>; readers: Array<[string, Reader]> } {

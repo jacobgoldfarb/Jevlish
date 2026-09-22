@@ -53,7 +53,7 @@ export function resolvePolicy(base: AcceptancePolicy, override?: PartialPolicy):
 }
 
 /** Map a Noul yes-probability onto three-valued truth under a policy. */
-export function truthOf(probability: number, policy: AcceptancePolicy["noul"]): Truth {
+export function truthOfProbability(probability: number, policy: AcceptancePolicy["noul"]): Truth {
   if (probability >= policy.yesAbove) return true;
   if (probability <= policy.noBelow) return false;
   return "uncertain";

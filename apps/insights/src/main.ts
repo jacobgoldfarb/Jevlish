@@ -34,7 +34,7 @@ const { values: flags } = parseArgs({
 const askAbout = (item: Feedback) =>
   sense
     .given(item)
-    .describedBy((f) => ({ message: f.text }))
+    .seenAs((f) => ({ message: f.text }))
     .ask({
       problem: describesProblem,
       request: requestsChange,

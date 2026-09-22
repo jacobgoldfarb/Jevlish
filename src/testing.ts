@@ -11,7 +11,7 @@ export interface Fixture<T> {
   readonly note?: string;
 }
 
-export interface Report<T> {
+export interface GradeReport<T> {
   readonly total: number;
   readonly decided: number;
   readonly truePositives: number;
@@ -27,8 +27,9 @@ export interface Report<T> {
   readonly abstained: ReadonlyArray<{ readonly fixture: Fixture<T>; readonly judgment: Judgment<boolean> }>;
 }
 
-export interface MeasureOptions<T> {
-  readonly describedBy?: Projection<T>;
+export interface GradeOptions<T> {
+  /** What the model sees of each fixture's subject. */
+  readonly seenAs?: Projection<T>;
   readonly policy?: PartialPolicy;
 }
 
@@ -48,12 +49,12 @@ export async function grade<T>(
   runtime: Runtime,
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],
-  options: MeasureOptions<T> = {},
-): Promise<Report<T>> {
+  options: GradeOptions<T> = {},
+): Promise<GradeReport<T>> {
   const condition = toCondition(meaning);
   const policy = resolvePolicy(runtime.policy, options.policy);
   const rows = await Promise.all(
-    fixtures.map((fixture) => judgeFixture(runtime, condition, fixture, policy, options.describedBy)),
+    fixtures.map((fixture) => judgeFixture(runtime, condition, fixture, policy, options.seenAs)),
   );
   return reportFrom(rows);
 }
@@ -76,7 +77,7 @@ function classify<T>(row: JudgedFixture<T>): Classification {
   return judgment.value ? "falsePositive" : "falseNegative";
 }
 
-function reportFrom<T>(rows: readonly JudgedFixture<T>[]): Report<T> {
+function reportFrom<T>(rows: readonly JudgedFixture<T>[]): GradeReport<T> {
   const counts: Record<Classification, number> = {
     truePositive: 0,
     trueNegative: 0,

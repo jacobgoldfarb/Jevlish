@@ -28,7 +28,13 @@ export {
   type RequestRecord,
   type Truth,
 } from "./judgment.js";
-export { defaultPolicy, resolvePolicy, truthOf, type AcceptancePolicy, type PartialPolicy } from "./policy.js";
+export {
+  defaultPolicy,
+  resolvePolicy,
+  truthOfProbability,
+  type AcceptancePolicy,
+  type PartialPolicy,
+} from "./policy.js";
 export * as logic from "./logic.js";
 
 // Builders (types for annotations)
@@ -42,19 +48,19 @@ export {
   ReadyBranch,
   type BranchTaken,
   type Decision,
-  type Handler,
+  type Action,
 } from "./builders/given.js";
 export { Measure } from "./builders/measure.js";
 export { From, Query, type QueryResult, type RankedQueryResult, type RankOrder } from "./builders/from.js";
 
 // Runtime
 export { Runtime, type PlannedRequest, type SenseConfig } from "./runtime/runtime.js";
-export { memoryCache, type Cache, type Evaluator } from "./runtime/evaluator.js";
+export { memoryCache, type Cache, type Transport } from "./runtime/transport.js";
 export type { Plan } from "./runtime/plan.js";
 export { toState } from "./state.js";
 export { SenseError } from "./errors.js";
 
 // Testing
-export type { Fixture, MeasureOptions, Report } from "./testing.js";
+export type { Fixture, GradeOptions, GradeReport } from "./testing.js";
 
 export type { EntryType } from "@typesafe-ai/sdk";

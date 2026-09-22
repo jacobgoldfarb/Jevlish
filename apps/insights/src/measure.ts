@@ -38,7 +38,7 @@ const meanings = { workaround: describesWorkaround, churnRisk };
 
 for (const name of Object.keys(suites) as Array<keyof typeof suites>) {
   const fixtures = suites[name];
-  const report = await sense.grade(meanings[name], fixtures, { describedBy: (f) => ({ message: f.text }) });
+  const report = await sense.grade(meanings[name], fixtures, { seenAs: (f) => ({ message: f.text }) });
   const pct = (n: number | null) => (n === null ? "n/a" : `${Math.round(n * 100)}%`);
   console.log(`\n\x1b[1m${name}\x1b[0m  ${fixtures.length} fixtures  accuracy ${pct(report.accuracy)}  coverage ${pct(report.coverage)}  FP ${report.falsePositives}  FN ${report.falseNegatives}  abstained ${report.abstentions}`);
   for (const { fixture, judgment } of report.misjudged) {

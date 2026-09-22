@@ -82,7 +82,7 @@ describe("given().when()", () => {
     const client = fake(() => yes(0.99));
     const plan = createSense({ client })
       .given(open)
-      .describedBy((ticket) => ({ body: ticket.body }))
+      .seenAs((ticket) => ({ body: ticket.body }))
       .when(blocked)
       .and((ticket) => ticket.id === "t1")
       .plan();
@@ -134,7 +134,7 @@ describe("given().chooseFrom()", () => {
     const owner = await createSense({ client })
       .given({ ticket: open })
       .chooseFrom(engineers)
-      .describedBy((engineer) => ({ expertise: engineer.expertise }))
+      .seenAs((engineer) => ({ expertise: engineer.expertise }))
       .by("whose experience best matches the problem described in ticket")
       .orNone("none of the engineers has relevant experience")
       .run();

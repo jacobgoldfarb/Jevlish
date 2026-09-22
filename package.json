@@ -1,6 +1,6 @@
 {
   "name": "jevlish",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "TypeScript expressions that compile to Jev requests.",
   "author": "Jacob Goldfarb",
   "license": "MIT",

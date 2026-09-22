@@ -11,7 +11,7 @@ import { Measure } from "./measure.js";
 import { type Projection, type SubjectContext, contextFor, judge, prepare } from "./subject.js";
 
 /** A callback chosen by a judgment. It receives the subject and the judgment that selected it. */
-export type Handler<T, R> = (subject: T, judgment: Judgment<boolean>) => R | Promise<R>;
+export type Action<T, R> = (subject: T, judgment: Judgment<boolean>) => R | Promise<R>;
 
 export type BranchTaken = "do" | "otherwise" | "uncertain";
 
@@ -30,8 +30,8 @@ export class Given<T> {
     private readonly policy: PartialPolicy | undefined = undefined,
   ) {}
 
-  /** Send only these fields to the model. Code predicates still see the whole subject. */
-  describedBy(projection: Projection<T>): Given<T> {
+  /** What the model sees. Code predicates and actions still receive the whole subject. */
+  seenAs(projection: Projection<T>): Given<T> {
     return new Given(this.runtime, this.subject, projection, this.policy);
   }
 
@@ -93,7 +93,7 @@ export class Predicate<T> {
   }
 
   /** Runs when the condition resolves to true. Uncertainty must be handled before `.run()`. */
-  do<R>(action: Handler<T, R>): Branch<T, R, false> {
+  do<R>(action: Action<T, R>): Branch<T, R, false> {
     return new Branch(this, action, undefined);
   }
 
@@ -115,18 +115,18 @@ export class Predicate<T> {
 export class Branch<T, R, HasOtherwise extends boolean> {
   constructor(
     private readonly predicate: Predicate<T>,
-    private readonly onTrue: Handler<T, unknown>,
-    private readonly onFalse: Handler<T, unknown> | undefined,
+    private readonly onTrue: Action<T, unknown>,
+    private readonly onFalse: Action<T, unknown> | undefined,
   ) {}
 
   /** Runs when the condition resolves to false. Never runs on uncertainty. */
-  otherwise<R2>(action: Handler<T, R2>): Branch<T, R | R2, true> {
+  otherwise<R2>(action: Action<T, R2>): Branch<T, R | R2, true> {
     return new Branch(this.predicate, this.onTrue, action);
   }
 
   /** Runs when the condition is unresolved. Required: uncertainty never falls through. */
   whenUncertain<R3>(
-    action: Handler<T, R3>,
+    action: Action<T, R3>,
   ): ReadyBranch<T, HasOtherwise extends true ? R | R3 : R | R3 | undefined> {
     return new ReadyBranch(this.predicate, this.onTrue, this.onFalse, action);
   }
@@ -135,9 +135,9 @@ export class Branch<T, R, HasOtherwise extends boolean> {
 export class ReadyBranch<T, R> {
   constructor(
     private readonly predicate: Predicate<T>,
-    private readonly onTrue: Handler<T, unknown>,
-    private readonly onFalse: Handler<T, unknown> | undefined,
-    private readonly onUncertain: Handler<T, unknown>,
+    private readonly onTrue: Action<T, unknown>,
+    private readonly onFalse: Action<T, unknown> | undefined,
+    private readonly onUncertain: Action<T, unknown>,
   ) {}
 
   plan(): Plan {
@@ -165,9 +165,9 @@ export class ChooseCandidates<T, C> {
     private readonly candidates: Candidates<C>,
   ) {}
 
-  /** Send only these fields of each candidate. */
-  describedBy(projection: Projection<C>): ChooseCandidates<T, C> {
-    return new ChooseCandidates(this.ctx, this.candidates.describedBy(projection));
+  /** What the model sees of each candidate. The chosen candidate comes back whole. */
+  seenAs(projection: Projection<C>): ChooseCandidates<T, C> {
+    return new ChooseCandidates(this.ctx, this.candidates.seenAs(projection));
   }
 
   /** The selection criterion, in prose. */
@@ -181,10 +181,6 @@ export class Choose<T, C, None> {
     private readonly ctx: SubjectContext<T>,
     private readonly selection: Selection<C, None>,
   ) {}
-
-  describedBy(projection: Projection<C>): Choose<T, C, None> {
-    return new Choose(this.ctx, this.selection.describedBy(projection));
-  }
 
   /** Make "none of them" a legitimate, distinct outcome. Separate from uncertainty. */
   orNone(description: EntryType): Choose<T, C, null> {

@@ -8,16 +8,16 @@ import type {
   SystemOneRequest,
   SystemOneResult,
 } from "@typesafe-ai/sdk";
-import type { Evaluator } from "../src/index.js";
+import type { Transport } from "../src/index.js";
 
 export type Script = (question: Question, state: EntryType, id: string) => NoulResponse | ChoiceResponse | ScoreResponse;
 
-export interface FakeEvaluator extends Evaluator {
+export interface FakeTransport extends Transport {
   readonly calls: SystemOneRequest<Questions>[];
 }
 
-/** An evaluator that answers each question by running a script against it. */
-export function fake(script: Script): FakeEvaluator {
+/** A transport that answers each question by running a script against it. */
+export function fake(script: Script): FakeTransport {
   const calls: SystemOneRequest<Questions>[] = [];
   return {
     calls,

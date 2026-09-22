@@ -4,7 +4,8 @@ import { SenseError } from "../errors.js";
 import type { Answer, EvidenceLog } from "../judgment.js";
 import { type AcceptancePolicy, type PartialPolicy, defaultPolicy, resolvePolicy } from "../policy.js";
 import { stableStringify } from "../state.js";
-import { type Cache, type Evaluator, Semaphore } from "./evaluator.js";
+import { Semaphore } from "./semaphore.js";
+import type { Cache, Transport } from "./transport.js";
 
 export interface SenseConfig {
   /** API key; falls back to TYPESAFE_API_KEY. Ignored when `client` is given. */
@@ -12,7 +13,7 @@ export interface SenseConfig {
   /** Model name; falls back to the SDK default (`jev-latest`). */
   readonly model?: string;
   /** Bring your own transport (a TypeSafeClient, or a fake in tests). */
-  readonly client?: Evaluator;
+  readonly client?: Transport;
   /** Acceptance thresholds. These are yours to tune. */
   readonly policy?: PartialPolicy;
   /** Maximum in-flight requests. Default 8. */
@@ -37,7 +38,7 @@ export class Runtime {
   private readonly semaphore: Semaphore;
   private readonly cache: Cache | undefined;
   private readonly config: SenseConfig;
-  private transport: Evaluator | undefined;
+  private transport: Transport | undefined;
 
   constructor(config: SenseConfig = {}) {
     this.config = config;
@@ -86,7 +87,7 @@ export class Runtime {
     const cached = await this.cache?.get(key);
     if (cached) return { result: cached, cached: true };
     const result = await this.semaphore.run(() =>
-      this.evaluator().systemOne({
+      this.connect().systemOne({
         state: request.state,
         questions: request.questions,
         ...(this.model ? { model: this.model } : {}),
@@ -112,7 +113,8 @@ export class Runtime {
     });
   }
 
-  private evaluator(): Evaluator {
+  /** The configured transport, creating a TypeSafe client on first use. */
+  private connect(): Transport {
     if (this.transport) return this.transport;
     try {
       const client = new TypeSafeClient({
@@ -131,7 +133,7 @@ export class Runtime {
 
   private modelName(): string {
     if (this.model) return this.model;
-    const transport = this.evaluator();
+    const transport = this.connect();
     return transport instanceof TypeSafeClient ? transport.defaultModel : "custom";
   }
 }

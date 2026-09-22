@@ -30,7 +30,7 @@ One expression per message, one request each:
 ```ts
 const profile = (item: Feedback) =>
   given(item)
-    .describedBy((f) => ({ message: f.text }))
+    .seenAs((f) => ({ message: f.text }))
     .ask({
       problem: describesProblem,          // Noul
       request: requestsChange,            // Noul

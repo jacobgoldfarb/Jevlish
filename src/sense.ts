@@ -2,14 +2,14 @@ import { From } from "./builders/from.js";
 import { Given } from "./builders/given.js";
 import type { ConditionLike } from "./expressions/condition.js";
 import { Runtime, type SenseConfig } from "./runtime/runtime.js";
-import { type Fixture, type MeasureOptions, type Report, grade as gradeWith } from "./testing.js";
+import { type Fixture, type GradeOptions, type GradeReport, grade as gradeWith } from "./testing.js";
 
 /** A configured instance of the language: the verbs, bound to one runtime. */
 export interface Sense {
   readonly runtime: Runtime;
   given<T>(subject: T): Given<T>;
   from<T>(items: readonly T[]): From<T>;
-  grade<T>(meaning: ConditionLike<T>, fixtures: readonly Fixture<T>[], options?: MeasureOptions<T>): Promise<Report<T>>;
+  grade<T>(meaning: ConditionLike<T>, fixtures: readonly Fixture<T>[], options?: GradeOptions<T>): Promise<GradeReport<T>>;
 }
 
 export function createSense(config: SenseConfig = {}): Sense {
@@ -46,7 +46,7 @@ export function from<T>(items: readonly T[]): From<T> {
 export function grade<T>(
   meaning: ConditionLike<T>,
   fixtures: readonly Fixture<T>[],
-  options?: MeasureOptions<T>,
-): Promise<Report<T>> {
+  options?: GradeOptions<T>,
+): Promise<GradeReport<T>> {
   return current().grade(meaning, fixtures, options);
 }

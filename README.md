@@ -11,7 +11,7 @@ const blocked = means<Ticket>("the customer cannot complete their task")
   .excluding("they can finish the task despite the inconvenience");
 
 const decision = await given(ticket)
-  .describedBy((t) => ({ subject: t.subject, body: t.body }))
+  .seenAs((t) => ({ subject: t.subject, body: t.body }))
   .when(blocked)
   .and((t) => t.status === "open")
   .do(escalate)
@@ -37,7 +37,7 @@ const queue = await from(tickets)
   .run();
 ```
 
-`items` passed both checks, highest score first. `rejected` resolved false. `uncertain` missed your threshold on the Noul or the score. The sort and `take` run locally.
+`accepted` passed both checks, highest score first. `rejected` resolved false. `uncertain` missed your threshold on the Noul or the score. The sort and `take` run locally.
 
 ## What it solves
 
@@ -54,7 +54,7 @@ export TYPESAFE_API_KEY=...
 
 Node 20+. ESM.
 
-`given(subject)` judges one value. `from(items)` filters a list. `.describedBy(fn)` is the state the model sees; predicates still receive the whole object. `.plan()` returns the requests that would be sent, including how many subjects code already settled.
+`given(subject)` judges one value. `from(items)` filters a list. `.seenAs(fn)` is the state the model sees; predicates, actions, and the chosen candidate are still the whole object. `.plan()` returns the requests that would be sent, including how many subjects code already settled.
 
 ```ts
 import { configure } from "jevlish";

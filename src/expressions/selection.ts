@@ -17,11 +17,6 @@ export class Selection<C, None = never> {
     readonly noneDescription: EntryType | undefined,
   ) {}
 
-  /** Send only these fields of each candidate. */
-  describedBy(projection: (candidate: C) => unknown): Selection<C, None> {
-    return new Selection(this.candidates, projection, this.criterion, this.noneDescription);
-  }
-
   /** Make "none of them" a legitimate, distinct outcome. */
   orNone(description: EntryType): Selection<C, null> {
     return new Selection(this.candidates, this.projection, this.criterion, description);
@@ -35,7 +30,8 @@ export class Candidates<C> {
     private readonly projection: ((candidate: C) => unknown) | undefined,
   ) {}
 
-  describedBy(projection: (candidate: C) => unknown): Candidates<C> {
+  /** What the model sees of each candidate. The chosen candidate comes back whole. */
+  seenAs(projection: (candidate: C) => unknown): Candidates<C> {
     return new Candidates(this.candidates, projection);
   }
 
@@ -52,7 +48,7 @@ export function chooseFrom<C>(candidates: readonly C[]): Candidates<C> {
   return new Candidates(candidates, undefined);
 }
 
-export function compileSelection<C>(selection: Selection<C, unknown>): {
+export function toChoiceCriteria<C>(selection: Selection<C, unknown>): {
   criteria: ChoiceCriteria;
   byOption: Map<string, C>;
 } {

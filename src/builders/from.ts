@@ -11,8 +11,8 @@ import { type Projection, contextFor } from "./subject.js";
 export type RankOrder = "highest first" | "lowest first";
 
 export interface QueryResult<T> {
-  /** Accepted items, in ranked order when a scale was given, otherwise in input order. */
-  readonly items: readonly T[];
+  /** Items the condition resolved to true, in ranked order when a scale was given, otherwise in input order. */
+  readonly accepted: readonly T[];
   /** Items whose filtering or ranking judgment did not meet the policy. Not rejected; unresolved. */
   readonly uncertain: readonly T[];
   /** Items the condition resolved to false. */
@@ -36,8 +36,8 @@ export class From<T> {
     private readonly policy: PartialPolicy | undefined = undefined,
   ) {}
 
-  /** Send only these fields of each item. Code predicates still see whole items. */
-  describedBy(projection: Projection<T>): From<T> {
+  /** What the model sees of each item. Code predicates still receive whole items. */
+  seenAs(projection: Projection<T>): From<T> {
     return new From(this.runtime, this.items, projection, this.policy);
   }
 
@@ -169,7 +169,7 @@ export class Query<T, Ranked extends boolean = false> {
   private toResult(groups: Partitioned<T>, log: EvidenceLog): RunResult<T, Ranked> {
     const limited = this.state.limit === undefined ? groups.accepted : groups.accepted.slice(0, this.state.limit);
     const result: QueryResult<T> = {
-      items: limited.map((verdict) => verdict.item),
+      accepted: limited.map((verdict) => verdict.item),
       uncertain: groups.uncertain,
       rejected: groups.rejected,
       evidence: log.toEvidence(),

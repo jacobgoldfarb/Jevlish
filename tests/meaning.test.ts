@@ -24,8 +24,8 @@ describe("means()", () => {
     expect(blocked.node).toMatchObject({
       type: "semantic",
       proposition: "the customer cannot continue their work",
-      yes: "a product failure prevents them from completing the task",
-      no: "they can complete the task despite inconvenience",
+      including: "a product failure prevents them from completing the task",
+      excluding: "they can complete the task despite inconvenience",
       name: "blocked",
     });
   });

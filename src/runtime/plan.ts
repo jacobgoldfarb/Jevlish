@@ -7,7 +7,7 @@ import type { PlannedRequest, Runtime } from "./runtime.js";
  * the questions batch into requests.
  */
 export interface Plan {
-  readonly subjects: number;
+  readonly subjectCount: number;
   readonly decidedByCode: number;
   readonly questionCount: number;
   readonly requestCount: number;
@@ -22,7 +22,7 @@ export function planFor(runtime: Runtime, probes: readonly Probe<unknown>[], not
   const decidedByCode = probes.filter((probe) => !probe.needsInference).length;
   const questionCount = probes.reduce((sum, probe) => sum + probe.questionCount, 0);
   return {
-    subjects: probes.length,
+    subjectCount: probes.length,
     decidedByCode,
     questionCount,
     requestCount: requests.length,

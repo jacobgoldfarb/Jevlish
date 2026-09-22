@@ -52,11 +52,11 @@ export const severity = scale<Feedback>("how much the reported issue affects the
   .named("severity");
 
 export const area = chooseFrom(AREAS)
-  .describedBy((a) => a.description)
+  .seenAs((a) => a.description)
   .by("which part of the product the message is mainly about")
   .orNone("not about any specific part of the product");
 
 export const existingFeature = chooseFrom(FEATURES)
-  .describedBy((feature) => feature.description)
+  .seenAs((feature) => feature.description)
   .by("which of these existing features does what the user is asking for")
   .orNone("none of these features does what the user is asking for");

@@ -66,7 +66,7 @@ const describeTicket = (ticket: Ticket) => ({ subject: ticket.subject, body: tic
 const escalationPolicy = (ticket: Ticket) =>
   sense
     .given(ticket)
-    .describedBy(describeTicket)
+    .seenAs(describeTicket)
     .when(needsAttention)
     .do(escalate)
     .otherwise(leaveUnchanged)
@@ -75,7 +75,7 @@ const escalationPolicy = (ticket: Ticket) =>
 /** From the open tickets that report a product problem, ranked by disruption, take five. */
 const priorityQueue = sense
   .from(tickets)
-  .describedBy(describeTicket)
+  .seenAs(describeTicket)
   .where((ticket) => ticket.status === "open")
   .and(reportsProblem)
   .rankedBy(disruption, "highest first")
@@ -86,7 +86,7 @@ const linkIncident = (ticket: Ticket) =>
   sense
     .given({ ticket: describeTicket(ticket) })
     .chooseFrom(incidents)
-    .describedBy((incident) => ({ title: incident.title, summary: incident.summary }))
+    .seenAs((incident) => ({ title: incident.title, summary: incident.summary }))
     .by("the incident that explains the problem described in ticket")
     .orNone("no listed incident explains this ticket");
 
@@ -95,7 +95,7 @@ const chooseOwner = (ticket: Ticket) =>
   sense
     .given({ ticket: describeTicket(ticket) })
     .chooseFrom(engineers.filter((engineer) => engineer.onCall))
-    .describedBy((engineer) => ({ expertise: engineer.expertise, recentWork: engineer.recentWork }))
+    .seenAs((engineer) => ({ expertise: engineer.expertise, recentWork: engineer.recentWork }))
     .by("whose experience best matches the problem described in ticket")
     .orNone("none of these engineers has relevant experience for this ticket");
 
@@ -132,7 +132,7 @@ async function triage(): Promise<DeskReport> {
   traces.push({ label: "priority queue", evidence: queue.evidence });
 
   const incidents: DeskReport["incidents"][number][] = [];
-  for (const ticket of queue.items) {
+  for (const ticket of queue.accepted) {
     const link = await linkIncident(ticket).run();
     traces.push({ label: `incident ${ticket.id}`, evidence: link.evidence });
     incidents.push({ ticket, link });
@@ -208,7 +208,7 @@ async function runDesk(): Promise<void> {
 function showPlan(): void {
   const print = (title: string, plan: Plan) => {
     heading(title);
-    console.log(`  subjects ${plan.subjects}, settled by code ${plan.decidedByCode}, ` +
+    console.log(`  subjects ${plan.subjectCount}, settled by code ${plan.decidedByCode}, ` +
       `questions ${plan.questionCount}, requests ${plan.requestCount}`);
     for (const note of plan.notes) console.log(`  ${dim(note)}`);
     const sample = plan.requests[0];
@@ -226,7 +226,7 @@ function showPlan(): void {
 
 async function measureVocabulary(): Promise<void> {
   heading(`grade(blocked) over ${blockedFixtures.length} fixtures`);
-  const report = await sense.grade(blocked, blockedFixtures, { describedBy: describeTicket });
+  const report = await sense.grade(blocked, blockedFixtures, { seenAs: describeTicket });
   console.log(`  accuracy ${fmt(report.accuracy)}  coverage ${fmt(report.coverage)}`);
   console.log(`  false positives ${report.falsePositives}, false negatives ${report.falseNegatives}, abstentions ${report.abstentions}`);
   for (const { fixture } of report.misjudged) console.log(`  misjudged: ${fixture.note}`);

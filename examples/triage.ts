@@ -15,7 +15,7 @@ console.log("== given().when().do() ==");
 for (const ticket of tickets) {
   const decision = await sense
     .given(ticket)
-    .describedBy((t) => ({ subject: t.subject, body: t.body }))
+    .seenAs((t) => ({ subject: t.subject, body: t.body }))
     .when(needsAttention)
     .do(() => "escalate")
     .otherwise(() => "leave")
@@ -30,13 +30,13 @@ for (const ticket of tickets) {
 }
 
 // 2. Inspect before running: what leaves the process, what is asked.
-show("plan for T-1", sense.given(tickets[0]!).describedBy((t) => ({ body: t.body })).when(needsAttention).plan());
+show("plan for T-1", sense.given(tickets[0]!).seenAs((t) => ({ body: t.body })).when(needsAttention).plan());
 
 // 3. Collections: filter, rank by a scale, take.
 console.log("\n== from().where().rankedBy().take() ==");
 const ranked = await sense
   .from(tickets)
-  .describedBy((t) => ({ subject: t.subject, body: t.body }))
+  .seenAs((t) => ({ subject: t.subject, body: t.body }))
   .where((t) => t.status === "open")
   .and(reportsProblem)
   .rankedBy(disruption, "highest first")
@@ -53,7 +53,7 @@ for (const ticket of [tickets[0]!, tickets[4]!, tickets[3]!]) {
   const owner: Judgment<(typeof engineers)[number] | null> = await sense
     .given({ ticket: { subject: ticket.subject, body: ticket.body } })
     .chooseFrom(engineers)
-    .describedBy((e) => ({ expertise: e.expertise, recentWork: e.recentWork }))
+    .seenAs((e) => ({ expertise: e.expertise, recentWork: e.recentWork }))
     .by("whose experience best matches the problem described in ticket")
     .orNone("none of the engineers has relevant experience for this ticket")
     .run();
@@ -73,7 +73,7 @@ const report = await sense.grade(
     expected: ["T-1", "T-5"].includes(t.id),
     note: t.id,
   })),
-  { describedBy: (t) => ({ subject: t.subject, body: t.body }) },
+  { seenAs: (t) => ({ subject: t.subject, body: t.body }) },
 );
 console.log({
   accuracy: report.accuracy,

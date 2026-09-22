@@ -9,7 +9,7 @@ type ScoreAnswer = Extract<Answer, { type: "score" }>;
 type ChoiceAnswer = Extract<Answer, { type: "choice" }>;
 import * as logic from "../logic.js";
 import type { AcceptancePolicy } from "../policy.js";
-import { truthOf } from "../policy.js";
+import { truthOfProbability } from "../policy.js";
 import { stableStringify } from "../state.js";
 
 /** An expression tree after code predicates have been folded away. */
@@ -104,7 +104,7 @@ export class Probe<T> {
           if (!answer || answer.type !== "noul") {
             throw new SenseError(`Expected a noul answer for question ${id}.`);
           }
-          const truth = truthOf(answer.noul, policy.noul);
+          const truth = truthOfProbability(answer.noul, policy.noul);
           this.recordNoul(id, node, answer.noul, truth);
           return truth;
         }
@@ -282,10 +282,10 @@ function choiceReading(answer: ChoiceAnswer, policy: AcceptancePolicy): ChoiceRe
 }
 
 function noulCriteria(node: SemanticCondition): { true?: EntryType; false?: EntryType } | undefined {
-  if (node.yes === undefined && node.no === undefined) return undefined;
+  if (node.including === undefined && node.excluding === undefined) return undefined;
   const criteria: { true?: EntryType; false?: EntryType } = {};
-  if (node.yes !== undefined) criteria.true = node.yes;
-  if (node.no !== undefined) criteria.false = node.no;
+  if (node.including !== undefined) criteria.true = node.including;
+  if (node.excluding !== undefined) criteria.false = node.excluding;
   return criteria;
 }
 
