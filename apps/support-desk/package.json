@@ -1,0 +1,22 @@
+{
+  "name": "support-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample app: a support inbox triaged with jevlish.",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=../../.env --import tsx src/main.ts",
+    "plan": "node --env-file=../../.env --import tsx src/main.ts --plan",
+    "trace": "node --env-file=../../.env --import tsx src/main.ts --trace",
+    "measure": "node --env-file=../../.env --import tsx src/main.ts --measure",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jevlish": "file:../.."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
