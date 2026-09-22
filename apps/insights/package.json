@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file=../../.env --import tsx src/main.ts",
-    "plan": "node --env-file=../../.env --import tsx src/main.ts --plan",
+    "plan": "node --import tsx src/main.ts --plan",
     "trace": "node --env-file=../../.env --import tsx src/main.ts --trace",
     "measure": "node --env-file=../../.env --import tsx src/measure.ts",
     "typecheck": "tsc --noEmit"
